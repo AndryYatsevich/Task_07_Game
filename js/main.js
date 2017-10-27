@@ -81,6 +81,26 @@
  *      }
  *
  * - Классы
+ *      Гетторы и сетторы
+ *       class DrawableObject {
+ *          constructor(x) {
+ *              this._x = x;
+ *          }
+ *
+ *          get x() {
+ *              return this._x;
+ *          }
+ *
+ *          set x(newX) {
+ *              if (_.isNumber(newX) && !_.isNaN(newX)) {
+ *                  this._x = newX;
+ *              } else {
+ *                  throw Error('expected number');
+ *              }
+ *          }
+ *      }
+
+ *
  *      Наследование
  *       class Shape {
  *          constructor(title, x, y, width, height) {
@@ -144,35 +164,97 @@
  *      }
  */
 
-class Main {
-    constructor() {
+class DrawableObject {
+    constructor(heigth, width) {
 
-        // создание игры и тп
+        this._height = heigth;
+        this._width = width;
+    }
+
+    get height() {
+        return this._height;
+    }
+
+    get width() {
+        return this._width;
     }
 }
 
-class DrawableObject {
-
-}
-
 class Cell extends DrawableObject {
+    constructor(inside) {
+        super();
+        this.inside = inside;
+    }
+
+    get isBarrier() {
+        return this.inside instanceof Barrier;
+    }
+
+    get isBonus() {
+        return this.inside instanceof Bonus;
+    }
+
+    get isPlayer() {
+        return this.inside instanceof Player;
+    }
+
+    get isMob() {
+        return this.inside instanceof Mob;
+    }
+
+    get isShoot() {
+        return this.inside instanceof Shoot;
+    }
+}
+
+class Barrier extends DrawableObject {
+    static getTypes(){
+        return ['wall', 'water', 'board'];
+    }
+
+    constructor (type){
+        super();
+        const TYPES = Barrier.getTypes();
+        this.type = _.indexOf(TYPES, type) >= 0 ? type : TYPES[0];
+    }
 
 }
 
-class Static extends DrawableObject {
+class Bonus extends DrawableObject {
+    static getTypes(){
+        return ['apple', 'melon', 'pear'];
+    }
 
-}
+    constructor (type) {
+        super();
+        const TYPES = Bonus.getTypes();
+        switch(type){
+            case TYPES[0]:
+                this._bonusHealth = 5;
+                break;
+            case TYPES[1]:
+                this._bonusSpeed = 3;
+                break;
+            case TYPES[2]:
+                this._bonusHealth = 7;
+                this._bonusSpeed = 6;
+                break;
+            default:
+                break;
+        }
+    }
 
-class Barrier extends Static {
-
-}
-
-class Bonus extends Static {
-
+    get bonus(){
+        return {h: this._bonusHealth, s: this._bonusSpeed};
+    }
+    
 }
 
 class Movable extends DrawableObject {
 
+    constructor(speed){
+        super();
+    }
 }
 
 class Shoot extends Movable {
@@ -190,4 +272,29 @@ class Mob extends Character {
 class Player extends Character {
 
 }
+
+const LEGEND = {
+    o: Bonus,
+    b: Barrier,
+    c: Cell,
+    p: Player,
+    m: Mob,
+    s: Shoot
+};
+
+const MATRIX_PATTERN =
+    `o * * b b b
+    * * * m b b
+    * * * * b b
+    b b * * * *
+    b b p * * *
+    b b b * * o`.replace(/ /g, '');
+
+class Main {
+    constructor() {
+        this.matrix = _.map(_.split(MATRIX_PATTERN, '\n'), (arr) => (_.map(_.split(arr, ''), (v) => (new Cell(LEGEND[v] && new LEGEND[v]())))));
+    }
+}
+
+
 window.onload = () => (new Main());
