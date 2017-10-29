@@ -244,24 +244,43 @@ class Bonus extends DrawableObject {
         }
     }
 
-    get bonus(){
+    getBonus(){
         return {h: this._bonusHealth, s: this._bonusSpeed};
     }
-    
+
 }
 
 class Movable extends DrawableObject {
 
     constructor(speed){
         super();
+        this._speed = speed;
+            }
+    get speed(){
+        return this._speed;
     }
 }
 
 class Shoot extends Movable {
+    constructor (damage){
+        super();
+        this._damage = damage;
+    }
 
+    getDamage(){
+        return this._damage;
+    }
 }
 
 class Character extends Movable {
+    constructor (health){
+        super(...arguments);
+            this._health = health;
+    }
+
+    get health(){
+        return this._health;
+    }
 
 }
 
@@ -271,6 +290,18 @@ class Mob extends Character {
 
 class Player extends Character {
 
+    let bonus2 = bonus.getBonus();
+    pickUpBonus(bonus){
+        if(bonus2.h){
+            this.health += bonus2.h;
+        }
+
+        if(bonus2.s){
+            this.speed += bonus2.s;
+        }
+    }
+
+    
 }
 
 const LEGEND = {
