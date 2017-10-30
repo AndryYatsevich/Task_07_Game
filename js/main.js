@@ -165,8 +165,9 @@
  */
 
 class DrawableObject {
-    constructor(heigth, width) {
-
+    constructor(x = 0, y = 0, heigth, width) {
+        this._x = x;
+        this._y = y;
         this._height = heigth;
         this._width = width;
     }
@@ -250,11 +251,65 @@ class Bonus extends DrawableObject {
 
 }
 
+const sideMovement = {
+    r: right,
+    l: left,
+    u: up,
+    d: down
+}
+
 class Movable extends DrawableObject {
 
     constructor(speed) {
         super();
         this._speed = speed;
+    }
+
+    move(x, y, newX, newY) {
+        if (sideMovement.r) {
+            let newX = x + 1;
+            let playerPosition = main.matrix[this.y][newX]
+
+            if (playerPosition instanceof cell.isBarrier) {
+                this.newX = x;
+            }
+
+            return playerPosition;
+        }
+
+        if (sideMovement.l) {
+            let newX = x - 1;
+            let playerPosition = main.matrix[this.y][newX]
+
+            if (playerPosition instanceof cell.isBarrier) {
+                this.newX = x;
+            }
+
+            return playerPosition;
+        }
+
+        if (sideMovement.u) {
+            let newY = y - 1;
+            let playerPosition = main.matrix[newY][this.x]
+
+            if (playerPosition instanceof cell.isBarrier) {
+                this.newY = y;
+            }
+
+            return playerPosition;
+
+        }
+
+        if (sideMovement.d) {
+            let newY = x - 1;
+            let playerPosition = main.matrix[newY][this.x]
+
+            if (playerPosition instanceof cell.isBarrier) {
+                this.newY = y;
+            }
+
+            return playerPosition;
+        }
     }
 
     get speed() {
@@ -296,7 +351,7 @@ class Character extends Movable {
             throw new Error('error');
         }
         this._health = newHealth;
-        
+
     }
 
 }
@@ -322,6 +377,7 @@ class Player extends Character {
 
 
 }
+
 
 const LEGEND = {
     o: Bonus,
