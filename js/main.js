@@ -208,11 +208,11 @@ class Cell extends DrawableObject {
 }
 
 class Barrier extends DrawableObject {
-    static getTypes(){
+    static getTypes() {
         return ['wall', 'water', 'board'];
     }
 
-    constructor (type){
+    constructor(type) {
         super();
         const TYPES = Barrier.getTypes();
         this.type = _.indexOf(TYPES, type) >= 0 ? type : TYPES[0];
@@ -221,14 +221,14 @@ class Barrier extends DrawableObject {
 }
 
 class Bonus extends DrawableObject {
-    static getTypes(){
+    static getTypes() {
         return ['apple', 'melon', 'pear'];
     }
 
-    constructor (type) {
+    constructor(type) {
         super();
         const TYPES = Bonus.getTypes();
-        switch(type){
+        switch (type) {
             case TYPES[0]:
                 this._bonusHealth = 5;
                 break;
@@ -244,7 +244,7 @@ class Bonus extends DrawableObject {
         }
     }
 
-    getBonus(){
+    getBonus() {
         return {h: this._bonusHealth, s: this._bonusSpeed};
     }
 
@@ -252,34 +252,51 @@ class Bonus extends DrawableObject {
 
 class Movable extends DrawableObject {
 
-    constructor(speed){
+    constructor(speed) {
         super();
         this._speed = speed;
-            }
-    get speed(){
+    }
+
+    get speed() {
         return this._speed;
+    }
+
+    set speed(newSpeed) {
+        if (!newSpeed || newSpeed < 0) {
+            throw new Error('error');
+        }
+        this._speed = newSpeed;
     }
 }
 
 class Shoot extends Movable {
-    constructor (damage){
+    constructor(damage) {
         super();
         this._damage = damage;
     }
 
-    getDamage(){
+    getDamage() {
         return this._damage;
     }
 }
 
 class Character extends Movable {
-    constructor (health){
+    constructor(health) {
         super(...arguments);
-            this._health = health;
+        this._health = health;
     }
 
-    get health(){
+    get health() {
         return this._health;
+    }
+
+
+    set health(newHealth) {
+        if (!newHealth || newHealth < 0) {
+            throw new Error('error');
+        }
+        this._health = newHealth;
+        
     }
 
 }
@@ -290,18 +307,20 @@ class Mob extends Character {
 
 class Player extends Character {
 
-    let bonus2 = bonus.getBonus();
-    pickUpBonus(bonus){
-        if(bonus2.h){
+
+    pickUpBonus(bonus) {
+
+        const bonus2 = bonus.getBonus();
+        if (bonus2.h) {
             this.health += bonus2.h;
         }
 
-        if(bonus2.s){
+        if (bonus2.s) {
             this.speed += bonus2.s;
         }
     }
 
-    
+
 }
 
 const LEGEND = {
