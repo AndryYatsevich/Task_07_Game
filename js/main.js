@@ -165,7 +165,7 @@
  */
 
 class DrawableObject {
-    constructor(x = 0, y = 0, heigth, width) {
+    constructor(x = 0, y = 0, heigth = 32, width = 32) {
         this._x = x;
         this._y = y;
         this._height = heigth;
@@ -182,9 +182,10 @@ class DrawableObject {
 }
 
 class Cell extends DrawableObject {
-    constructor(inside) {
-        super();
+    constructor(inside, x, y) {
+        super(x, y);
         this.inside = inside;
+
     }
 
     get isBarrier() {
@@ -206,6 +207,11 @@ class Cell extends DrawableObject {
     get isShoot() {
         return this.inside instanceof Shoot;
     }
+
+    swapInside(cell) {
+        this.inside = cell.inside;
+        cell.inside = null;
+    }
 }
 
 class Barrier extends DrawableObject {
@@ -213,8 +219,8 @@ class Barrier extends DrawableObject {
         return ['wall', 'water', 'board'];
     }
 
-    constructor(type) {
-        super();
+    constructor(x, y, type) {
+        super(x, y);
         const TYPES = Barrier.getTypes();
         this.type = _.indexOf(TYPES, type) >= 0 ? type : TYPES[0];
     }
@@ -226,8 +232,8 @@ class Bonus extends DrawableObject {
         return ['apple', 'melon', 'pear'];
     }
 
-    constructor(type) {
-        super();
+    constructor(x, y, type) {
+        super(x, y);
         const TYPES = Bonus.getTypes();
         switch (type) {
             case TYPES[0]:
@@ -252,63 +258,62 @@ class Bonus extends DrawableObject {
 }
 
 const sideMovement = {
-    r: right,
-    l: left,
-    u: up,
-    d: down
-}
+    RIGHT: 'right',
+    LEFT: 'left',
+    UP: 'up',
+    DOWN: 'down'
+};
 
 class Movable extends DrawableObject {
 
-    constructor(speed) {
-        super();
+    constructor(x, y, speed) {
+        super(x, y);
         this._speed = speed;
     }
 
-    move(x, y, newX, newY) {
-        if (sideMovement.r) {
-            let newX = x + 1;
-            let playerPosition = main.matrix[this.y][newX]
+    move(direction, matrix) {
+        if (sideMovement.RIGHT === direction) {
+            let newX = this._x + 1;
+            let currentPosition = matrix[this._y][this._x];
+            let playerPosition = matrix[this._y][newX];
 
-            if (playerPosition instanceof cell.isBarrier) {
-                this.newX = x;
+            if (!playerPosition.isBarrier) {
+                this._x = newX;
+                playerPosition.swapInside(currentPosition);
             }
-
-            return playerPosition;
         }
 
-        if (sideMovement.l) {
-            let newX = x - 1;
-            let playerPosition = main.matrix[this.y][newX]
+        if (sideMovement.LEFT === direction) {
+            let newX = this._x - 1;
+            let currentPosition = matrix[this._y][this._x];
+            let playerPosition = matrix[this._y][newX];
 
-            if (playerPosition instanceof cell.isBarrier) {
-                this.newX = x;
+            if (!playerPosition.isBarrier) {
+                this._x = newX;
+                playerPosition.swapInside(currentPosition);
             }
-
-            return playerPosition;
         }
 
-        if (sideMovement.u) {
-            let newY = y - 1;
-            let playerPosition = main.matrix[newY][this.x]
+        if (sideMovement.UP === direction) {
+            let newY = this._y - 1;
+            let currentPosition = matrix[this._y][this._x];
+            let playerPosition = matrix[newY][this._x];
 
-            if (playerPosition instanceof cell.isBarrier) {
-                this.newY = y;
+            if (!playerPosition.isBarrier) {
+                this._y = newY;
+                playerPosition.swapInside(currentPosition);
             }
-
-            return playerPosition;
-
         }
 
-        if (sideMovement.d) {
-            let newY = x - 1;
-            let playerPosition = main.matrix[newY][this.x]
+        if (sideMovement.DOWN === direction) {
+            let newY = this._y + 1;
+            let currentPosition = matrix[this._y][this._x];
+            let playerPosition = matrix[newY][this._x];
 
-            if (playerPosition instanceof cell.isBarrier) {
-                this.newY = y;
+            if (!playerPosition.isBarrier) {
+                this._y = newY;
+                playerPosition.swapInside(currentPosition);
             }
-
-            return playerPosition;
         }
     }
 
@@ -336,7 +341,7 @@ class Shoot extends Movable {
 }
 
 class Character extends Movable {
-    constructor(health) {
+    constructor(x, y, health) {
         super(...arguments);
         this._health = health;
     }
@@ -357,11 +362,15 @@ class Character extends Movable {
 }
 
 class Mob extends Character {
-
+    constructor(x, y) {
+        super(...arguments);
+    }
 }
 
 class Player extends Character {
-
+    constructor(x, y) {
+        super(...arguments);
+    }
 
     pickUpBonus(bonus) {
 
@@ -374,8 +383,6 @@ class Player extends Character {
             this.speed += bonus2.s;
         }
     }
-
-
 }
 
 
@@ -398,7 +405,8 @@ const MATRIX_PATTERN =
 
 class Main {
     constructor() {
-        this.matrix = _.map(_.split(MATRIX_PATTERN, '\n'), (arr) => (_.map(_.split(arr, ''), (v) => (new Cell(LEGEND[v] && new LEGEND[v]())))));
+        this.matrix = _.map(_.split(MATRIX_PATTERN, '\n'), (arr, y) => (_.map(_.split(arr, ''), (v, x) => (new Cell(LEGEND[v] && new LEGEND[v](x, y), x, y)))));
+        console.log(this.matrix);
     }
 }
 
