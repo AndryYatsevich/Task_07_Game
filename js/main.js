@@ -266,10 +266,10 @@ class Bonus extends DrawableObject {
 }
 
 const sideMovement = {
-    RIGHT: 'right',
-    LEFT: 'left',
-    UP: 'up',
-    DOWN: 'down'
+    RIGHT: '1',
+    LEFT: '2',
+    UP: '3',
+    DOWN: '4'
 };
 
 class Movable extends DrawableObject {
@@ -308,6 +308,10 @@ class Movable extends DrawableObject {
         if (!playerPosition.isBarrier) {
             this._y = _.isNumber(newY) ? newY : this._y;
             this._x = _.isNumber(newX) ? newX : this._x;
+            playerPosition.swapInside(currentPosition);
+        }
+        if(playerPosition.isBonus) {
+            currentPosition.inside.pickUpBonus(playerPosition.inside.getBonus());
             playerPosition.swapInside(currentPosition);
         }
     }
@@ -384,7 +388,6 @@ class Character extends Movable {
         return this._health;
     }
 
-
     set health(newHealth) {
         if (!newHealth || newHealth < 0) {
             throw new Error('error');
@@ -398,10 +401,13 @@ class Character extends Movable {
             this.inside.extinction();
         }
     }
-
 }
 
 class Mob extends Character {
+    static getRandomArbitrary(min, max) {
+        return Math.random() * (max - min) + min;
+    }
+
     constructor(x, y) {
         super(...arguments);
     }
@@ -432,10 +438,12 @@ class Mob extends Character {
             default:
                 break;
         }
-        if (!mobPosition.isBarrier || mobPosition.isBonus) {
+        if (!mobPosition.isBarrier) {
             this._y = _.isNumber(newY) ? newY : this._y;
             this._x = _.isNumber(newX) ? newX : this._x;
             mobPosition.swapInside(currentPosition);
+        } else {
+            this._direction = Mob.getRandomArbitrary(1, 4);
         }
     }
 }
