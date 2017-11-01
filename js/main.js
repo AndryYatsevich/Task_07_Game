@@ -165,27 +165,27 @@
  */
 
 class DrawableObject {
-    constructor(x = 0, y = 0, heigth = 32, width = 32) {
+    constructor(x = 0, y = 0, width = 32, heigth = 32) {
         this._x = x;
         this._y = y;
-        this._height = heigth;
         this._width = width;
+        this._height = heigth;
+    }
+
+    get width() {
+        return this._width;
     }
 
     get height() {
         return this._height;
     }
 
-    get width() {
-        return this._width;
-    }
 }
 
 class Cell extends DrawableObject {
     constructor(inside, x, y) {
         super(x, y);
         this.inside = inside;
-
     }
 
     get isBarrier() {
@@ -208,9 +208,17 @@ class Cell extends DrawableObject {
         return this.inside instanceof Shoot;
     }
 
+    get isEmpty() {
+        return this.inside === null;
+    }
+
     swapInside(cell) {
         this.inside = cell.inside;
         cell.inside = null;
+    }
+
+    extinction() {
+        this.inside = null;
     }
 }
 
@@ -272,48 +280,35 @@ class Movable extends DrawableObject {
     }
 
     move(direction, matrix) {
-        if (sideMovement.RIGHT === direction) {
-            let newX = this._x + 1;
-            let currentPosition = matrix[this._y][this._x];
-            let playerPosition = matrix[this._y][newX];
+        const currentPosition = matrix[this._y][this._x];
+        let newX, newY, playerPosition;
+        switch (direction) {
+            case sideMovement.RIGHT:
+                newX = this._x + 1;
+                playerPosition = matrix[this._y][newX];
 
-            if (!playerPosition.isBarrier) {
-                this._x = newX;
-                playerPosition.swapInside(currentPosition);
-            }
+                break;
+            case (sideMovement.LEFT):
+                newX = this._x - 1;
+                playerPosition = matrix[this._y][newX];
+
+                break;
+            case (sideMovement.UP):
+                newY = this._y - 1;
+                playerPosition = matrix[newY][this._x];
+
+                break;
+            case (sideMovement.DOWN):
+                newY = this._y + 1;
+                playerPosition = matrix[newY][this._x];
+                break;
+            default:
+                break;
         }
-
-        if (sideMovement.LEFT === direction) {
-            let newX = this._x - 1;
-            let currentPosition = matrix[this._y][this._x];
-            let playerPosition = matrix[this._y][newX];
-
-            if (!playerPosition.isBarrier) {
-                this._x = newX;
-                playerPosition.swapInside(currentPosition);
-            }
-        }
-
-        if (sideMovement.UP === direction) {
-            let newY = this._y - 1;
-            let currentPosition = matrix[this._y][this._x];
-            let playerPosition = matrix[newY][this._x];
-
-            if (!playerPosition.isBarrier) {
-                this._y = newY;
-                playerPosition.swapInside(currentPosition);
-            }
-        }
-
-        if (sideMovement.DOWN === direction) {
-            let newY = this._y + 1;
-            let currentPosition = matrix[this._y][this._x];
-            let playerPosition = matrix[newY][this._x];
-
-            if (!playerPosition.isBarrier) {
-                this._y = newY;
-                playerPosition.swapInside(currentPosition);
-            }
+        if (!playerPosition.isBarrier) {
+            this._y = _.isNumber(newY) ? newY : this._y;
+            this._x = _.isNumber(newX) ? newX : this._x;
+            playerPosition.swapInside(currentPosition);
         }
     }
 
@@ -330,18 +325,57 @@ class Movable extends DrawableObject {
 }
 
 class Shoot extends Movable {
-    constructor(damage) {
-        super();
+    constructor(x, y, damage = 5, direction) {
+        super(x, y);
         this._damage = damage;
+        this._direction = direction;
     }
 
     getDamage() {
         return this._damage;
     }
+
+    move(direction, matrix) {
+        const currentPosition = matrix[this._y][this._x];
+        let newX, newY, shootPosition;
+        switch (this._direction) {
+            case sideMovement.RIGHT:
+                newX = this._x + 1;
+                shootPosition = matrix[this._y][newX];
+
+                break;
+            case (sideMovement.LEFT):
+                newX = this._x - 1;
+                shootPosition = matrix[this._y][newX];
+
+                break;
+            case (sideMovement.UP):
+                newY = this._y - 1;
+                shootPosition = matrix[newY][this._x];
+
+                break;
+            case (sideMovement.DOWN):
+                newY = this._y + 1;
+                shootPosition = matrix[newY][this._x];
+                break;
+            default:
+                break;
+        }
+        if (shootPosition.isEmpty || shootPosition.isBonus) {
+            this._y = _.isNumber(newY) ? newY : this._y;
+            this._x = _.isNumber(newX) ? newX : this._x;
+            shootPosition.swapInside(currentPosition);
+        } else if (shootPosition.isPlayer || shootPosition.isMob) {
+            shootPosition.hit(this._damage);
+            currentPosition.extinction();
+        } else {
+            currentPosition.extinction();
+        }
+    }
 }
 
 class Character extends Movable {
-    constructor(x, y, health) {
+    constructor(x, y, health, speed) {
         super(...arguments);
         this._health = health;
     }
@@ -356,7 +390,13 @@ class Character extends Movable {
             throw new Error('error');
         }
         this._health = newHealth;
+    }
 
+    hit(damage) {
+        this.inside._health -= damage;
+        if (this.inside._health <= 0) {
+            this.inside.extinction();
+        }
     }
 
 }
@@ -364,6 +404,39 @@ class Character extends Movable {
 class Mob extends Character {
     constructor(x, y) {
         super(...arguments);
+    }
+
+    move(direction, matrix) {
+        const currentPosition = matrix[this._y][this._x];
+        let newX, newY, mobPosition;
+        switch (this._direction) {
+            case sideMovement.RIGHT:
+                newX = this._x + 1;
+                mobPosition = matrix[this._y][newX];
+
+                break;
+            case (sideMovement.LEFT):
+                newX = this._x - 1;
+                mobPosition = matrix[this._y][newX];
+
+                break;
+            case (sideMovement.UP):
+                newY = this._y - 1;
+                mobPosition = matrix[newY][this._x];
+
+                break;
+            case (sideMovement.DOWN):
+                newY = this._y + 1;
+                mobPosition = matrix[newY][this._x];
+                break;
+            default:
+                break;
+        }
+        if (!mobPosition.isBarrier || mobPosition.isBonus) {
+            this._y = _.isNumber(newY) ? newY : this._y;
+            this._x = _.isNumber(newX) ? newX : this._x;
+            mobPosition.swapInside(currentPosition);
+        }
     }
 }
 
@@ -409,6 +482,5 @@ class Main {
         console.log(this.matrix);
     }
 }
-
 
 window.onload = () => (new Main());
