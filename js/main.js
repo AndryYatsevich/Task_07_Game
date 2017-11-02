@@ -163,9 +163,10 @@
  *          };
  *      }
  */
+const CELL_SIZE = 32;
 
 class DrawableObject {
-    constructor(x = 0, y = 0, width = 32, heigth = 32) {
+    constructor(x = 0, y = 0, width = CELL_SIZE, heigth = CELL_SIZE) {
         this._x = x;
         this._y = y;
         this._width = width;
@@ -209,7 +210,7 @@ class Cell extends DrawableObject {
     }
 
     get isEmpty() {
-        return this.inside === null;
+        return this.inside === null || this.inside === undefined;
     }
 
     swapInside(cell) {
@@ -219,6 +220,11 @@ class Cell extends DrawableObject {
 
     extinction() {
         this.inside = null;
+    }
+
+    render(ctx) {
+        ctx.strokeStyle = 'RGB(0, 0, 0)';
+        ctx.strokeRect(CELL_SIZE * this._x, CELL_SIZE * this._y, CELL_SIZE, CELL_SIZE);
     }
 }
 
@@ -231,6 +237,11 @@ class Barrier extends DrawableObject {
         super(x, y);
         const TYPES = Barrier.getTypes();
         this.type = _.indexOf(TYPES, type) >= 0 ? type : TYPES[0];
+    }
+
+    render(ctx) {
+        ctx.fillStyle = 'black';
+        ctx.fillRect(this._x * this._width, this._y * this._height, this._width, this._height);
     }
 
 }
@@ -263,13 +274,21 @@ class Bonus extends DrawableObject {
         return {h: this._bonusHealth, s: this._bonusSpeed};
     }
 
+    render(ctx) {
+        ctx.beginPath();
+        ctx.arc(this._width * this._x + 16, this._height * this._y + 16, 8, 0, 360);
+        ctx.fillStyle = 'pink';
+        ctx.fill();
+    }
+
+
 }
 
 const sideMovement = {
-    RIGHT: '1',
-    LEFT: '2',
-    UP: '3',
-    DOWN: '4'
+    RIGHT: 1,
+    LEFT: 2,
+    UP: 3,
+    DOWN: 4
 };
 
 class Movable extends DrawableObject {
@@ -285,35 +304,40 @@ class Movable extends DrawableObject {
         switch (direction) {
             case sideMovement.RIGHT:
                 newX = this._x + 1;
-                playerPosition = matrix[this._y][newX];
-
+                newY = this._y;
                 break;
             case (sideMovement.LEFT):
                 newX = this._x - 1;
-                playerPosition = matrix[this._y][newX];
-
+                newY = this._y;
                 break;
             case (sideMovement.UP):
                 newY = this._y - 1;
-                playerPosition = matrix[newY][this._x];
-
+                newX = this._x;
                 break;
             case (sideMovement.DOWN):
                 newY = this._y + 1;
-                playerPosition = matrix[newY][this._x];
+                newX = this._x;
                 break;
             default:
                 break;
         }
+        if(!Movable.canMove(newX, newY, matrix)){
+            return;
+        }
+        playerPosition = matrix[newY][newX];
         if (!playerPosition.isBarrier) {
             this._y = _.isNumber(newY) ? newY : this._y;
             this._x = _.isNumber(newX) ? newX : this._x;
             playerPosition.swapInside(currentPosition);
         }
-        if(playerPosition.isBonus) {
+        if (playerPosition.isBonus) {
             currentPosition.inside.pickUpBonus(playerPosition.inside.getBonus());
             playerPosition.swapInside(currentPosition);
         }
+    }
+
+    static canMove(x, y, matrix) {
+        return !_.isEmpty(matrix[y]) && !_.isEmpty(matrix[y][x]);
     }
 
     get speed() {
@@ -446,6 +470,12 @@ class Mob extends Character {
             this._direction = Mob.getRandomArbitrary(1, 4);
         }
     }
+
+    render(ctx) {
+        ctx.fillStyle = 'red';
+        ctx.fillRect(this._x * this._width + CELL_SIZE / 3, this._y * this._height + CELL_SIZE / 3, CELL_SIZE / 3, CELL_SIZE / 3);
+
+    }
 }
 
 class Player extends Character {
@@ -464,7 +494,25 @@ class Player extends Character {
             this.speed += bonus2.s;
         }
     }
+
+    render(ctx) {
+        ctx.beginPath();
+        ctx.arc(this._width * this._x + 16, this._height * this._y + 16, 5, 0, 360);
+        ctx.fillStyle = 'purple';
+        ctx.fill();
+    }
 }
+
+const KEY_CODES = {
+    UP: 87,
+    DOWN: 83,
+    LEFT: 65,
+    RIGHT: 68,
+    ARROW_UP: 38,
+    ARROW_DOWN: 40,
+    ARROW_LEFT: 37,
+    ARROW_RIGHT: 39
+};
 
 
 const LEGEND = {
@@ -477,18 +525,95 @@ const LEGEND = {
 };
 
 const MATRIX_PATTERN =
-    `o * * b b b
-    * * * m b b
-    * * * * b b
-    b b * * * *
-    b b p * * *
-    b b b * * o`.replace(/ /g, '');
+    `o * * b b b m * * * * b b o
+    * * * m b b * * * o * * b *
+    * * * * b b * * m * * * b *
+    b b * * * * * * * * * * b *
+    b b * p * * b * * b b * * *
+    b b b * * o b b * * m * o *`.replace(/ /g, '');
 
 class Main {
     constructor() {
         this.matrix = _.map(_.split(MATRIX_PATTERN, '\n'), (arr, y) => (_.map(_.split(arr, ''), (v, x) => (new Cell(LEGEND[v] && new LEGEND[v](x, y), x, y)))));
-        console.log(this.matrix);
+
+        this.action();
+        this.on();
     }
+
+
+    on() {
+        window.addEventListener('keydown', (e) => this.movePlayer(e));
+    }
+
+    movePlayer(event) {
+        switch (event.keyCode) {
+            case KEY_CODES.UP:
+                this.player.move(sideMovement.UP, this.matrix);
+                break;
+            case KEY_CODES.DOWN:
+                this.player.move(sideMovement.DOWN, this.matrix);
+                break;
+            case KEY_CODES.LEFT:
+                this.player.move(sideMovement.LEFT, this.matrix);
+                break;
+            case KEY_CODES.RIGHT:
+                this.player.move(sideMovement.RIGHT, this.matrix);
+                break;
+            default:
+                break;
+        }
+
+        this.render();
+    }
+
+    action() {
+        const canvas = document.getElementById('canvas');
+        this.ctx = canvas.getContext('2d');
+        this._width = canvas.width = CELL_SIZE * _.maxBy(this.matrix, (v) => v.length).length;
+        this._height = canvas.height = CELL_SIZE * this.matrix.length;
+
+        for (let i = 0; i < this.matrix.length; i++) {
+            for (let j = 0; j < this.matrix[i].length; j++) {
+                const cell = this.matrix[i][j];
+
+                if (cell.isPlayer) {
+                    this.player = cell.inside;
+                }
+            }
+        }
+
+
+        this.render();
+        console.log(this.player);
+
+        /* const andreyLox = _
+            .chain(this.matrix)
+            .map((subArr) => (_
+                    .chain(subArr)
+                    .filter((v) => (v.isPlayer))
+                    .first()
+                    .value()
+            ))
+            .compact()
+            .first()
+            .value()
+            .inside; */
+    }
+
+    render() {
+        this.ctx.clearRect(0, 0, this._width, this._height);
+        _.forEach(this.matrix, (arr) => {
+            _.forEach(arr, (cell) => {
+                    cell.render(this.ctx);
+                    if (!cell.isEmpty) {
+                        cell.inside.render(this.ctx);
+                    }
+                }
+            )
+        });
+    }
+
 }
+
 
 window.onload = () => (new Main());
