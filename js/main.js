@@ -439,29 +439,30 @@ class Mob extends Character {
     move(direction, matrix) {
         const currentPosition = matrix[this._y][this._x];
         let newX, newY, mobPosition;
-        switch (this._direction) {
+        switch (direction) {
             case sideMovement.RIGHT:
                 newX = this._x + 1;
-                mobPosition = matrix[this._y][newX];
+                newY = this._y;
 
                 break;
             case (sideMovement.LEFT):
                 newX = this._x - 1;
-                mobPosition = matrix[this._y][newX];
+                newY = this._y;
 
                 break;
             case (sideMovement.UP):
                 newY = this._y - 1;
-                mobPosition = matrix[newY][this._x];
+                newX = this._x;
 
                 break;
             case (sideMovement.DOWN):
                 newY = this._y + 1;
-                mobPosition = matrix[newY][this._x];
+                newX = this._x;
                 break;
             default:
                 break;
         }
+        mobPosition = matrix[newY][newX];
         if (!mobPosition.isBarrier) {
             this._y = _.isNumber(newY) ? newY : this._y;
             this._x = _.isNumber(newX) ? newX : this._x;
@@ -538,6 +539,7 @@ class Main {
 
         this.action();
         this.on();
+        this.goMob();
     }
 
 
@@ -599,6 +601,20 @@ class Main {
             .value()
             .inside; */
     }
+
+    goMob(){
+        setTimeout(_.forEach(this.matrix, (arr) => {
+            _.forEach(arr, (cell) => {
+                    cell.render(this.ctx);
+                    if (cell.isMob) {
+                        console.log('Mob');
+                        cell.inside.move(2, this.matrix);
+                        this.render();
+                    }
+                }
+            )
+        }), 10);
+    };
 
     render() {
         this.ctx.clearRect(0, 0, this._width, this._height);
