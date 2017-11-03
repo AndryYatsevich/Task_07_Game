@@ -214,11 +214,18 @@ class Cell extends DrawableObject {
     }
 
     swapInside(cell) {
+        if (this.isMob) {
+            this.inside.isDead = true;
+        }
+
         this.inside = cell.inside;
         cell.inside = null;
     }
 
     extinction() {
+        if (this.inside instanceof Character) {
+            this.inside.isDead = true;
+        }
         this.inside = null;
     }
 
@@ -321,7 +328,7 @@ class Movable extends DrawableObject {
             default:
                 break;
         }
-        if(!Movable.canMove(newX, newY, matrix)){
+        if (!Movable.canMove(newX, newY, matrix)) {
             return;
         }
         playerPosition = matrix[newY][newX];
@@ -403,14 +410,26 @@ class Shoot extends Movable {
 }
 
 class Character extends Movable {
-    constructor(x, y, health, speed) {
+    constructor(x, y, health = 30, speed = 2, damage = 5) {
         super(...arguments);
         this._health = health;
+        this._speed = speed;
+        this._damage = damage;
     }
 
     get health() {
         return this._health;
     }
+
+    get speed() {
+        return this._speed;
+    }
+
+    get damage() {
+        return this._damage;
+    }
+
+
 
     set health(newHealth) {
         if (!newHealth || newHealth < 0) {
@@ -432,14 +451,27 @@ class Mob extends Character {
         return Math.random() * (max - min) + min;
     }
 
-    constructor(x, y) {
+    constructor(x, y, speed) {
         super(...arguments);
+        this._direction = sideMovement.LEFT;
+        this.isDead = false;
+        this._interval = 0;
+        this._speed = Mob.getRandomArbitrary(0.3, 3.5);
     }
 
-    move(direction, matrix) {
+    move(matrix) {
+        this._interval += 100;
+        if (this._interval < this._speed * 1000) {
+            return;
+        }
+
+        this._interval = 0;
         const currentPosition = matrix[this._y][this._x];
+
+        console.log(`x: ${this._x}, y:  ${this._y}`);
+
         let newX, newY, mobPosition;
-        switch (direction) {
+        switch (this._direction) {
             case sideMovement.RIGHT:
                 newX = this._x + 1;
                 newY = this._y;
@@ -462,13 +494,24 @@ class Mob extends Character {
             default:
                 break;
         }
+
+        console.log(`canMove: ${Movable.canMove(newX, newY, matrix)}`);
+        console.log(`newX: ${newX}, newY: ${newY}`);
+
+        if (!Movable.canMove(newX, newY, matrix)) {
+            this._direction = Math.round(Mob.getRandomArbitrary(1, 4));
+            console.log(`direction: ${this._direction}`);
+            return;
+        }
+
         mobPosition = matrix[newY][newX];
-        if (!mobPosition.isBarrier) {
+        if (!mobPosition.isBarrier && !mobPosition.isMob && !mobPosition.isPlayer && !mobPosition.isBonus) {
             this._y = _.isNumber(newY) ? newY : this._y;
             this._x = _.isNumber(newX) ? newX : this._x;
             mobPosition.swapInside(currentPosition);
         } else {
-            this._direction = Mob.getRandomArbitrary(1, 4);
+            this._direction = Math.round(Mob.getRandomArbitrary(1, 4));
+            console.log(this._direction);
         }
     }
 
@@ -526,12 +569,12 @@ const LEGEND = {
 };
 
 const MATRIX_PATTERN =
-    `o * * b b b m * * * * b b o
+    `o * * b b b * * * * m b b o
     * * * m b b * * * o * * b *
-    * * * * b b * * m * * * b *
+    * * * * b b * * * * * * b *
     b b * * * * * * * * * * b *
     b b * p * * b * * b b * * *
-    b b b * * o b b * * m * o *`.replace(/ /g, '');
+    b b b * m o b b * * * * o m`.replace(/ /g, '');
 
 class Main {
     constructor() {
@@ -539,9 +582,18 @@ class Main {
 
         this.action();
         this.on();
-        this.goMob();
+        this.statsRegister(); // нитрогай
     }
 
+    statsRegister() {
+        this._stats = new window.Stats();
+        this._stats.showPanel(0);
+
+        this._stats.dom.style.left = 'auto';
+        this._stats.dom.style.right = 0;
+
+        document.body.appendChild(this._stats.dom);
+    }
 
     on() {
         window.addEventListener('keydown', (e) => this.movePlayer(e));
@@ -565,7 +617,7 @@ class Main {
                 break;
         }
 
-        this.render();
+        // this.render();
     }
 
     action() {
@@ -573,6 +625,12 @@ class Main {
         this.ctx = canvas.getContext('2d');
         this._width = canvas.width = CELL_SIZE * _.maxBy(this.matrix, (v) => v.length).length;
         this._height = canvas.height = CELL_SIZE * this.matrix.length;
+        let healthBar =  document.getElementById('health');
+        let speedBar =  document.getElementById('speed');
+        let damageBar =  document.getElementById('damage');
+
+
+        this._mobs = [];
 
         for (let i = 0; i < this.matrix.length; i++) {
             for (let j = 0; j < this.matrix[i].length; j++) {
@@ -580,12 +638,20 @@ class Main {
 
                 if (cell.isPlayer) {
                     this.player = cell.inside;
+
+                }
+
+                if (cell.isMob) {
+                    this._mobs.push(cell.inside);
                 }
             }
         }
-
-
+        healthBar.style.width = `${this.player.health}%`;
+        speedBar.style.width = `${this.player.speed}%`;
+        damageBar.style.width = `${this.player.damage}%`;
+        setInterval(() => this.goMob(), 100);
         this.render();
+
         console.log(this.player);
 
         /* const andreyLox = _
@@ -602,34 +668,35 @@ class Main {
             .inside; */
     }
 
-    goMob(){
-        setTimeout(_.forEach(this.matrix, (arr) => {
-            _.forEach(arr, (cell) => {
-                    cell.render(this.ctx);
-                    if (cell.isMob) {
-                        console.log('Mob');
-                        cell.inside.move(2, this.matrix);
-                        this.render();
-                    }
-                }
-            )
-        }), 10);
+    goMob() {
+        _.each(this._mobs, (v) => {
+            !v.isDead && v.move(this.matrix)
+        });
     };
 
     render() {
-        this.ctx.clearRect(0, 0, this._width, this._height);
-        _.forEach(this.matrix, (arr) => {
-            _.forEach(arr, (cell) => {
-                    cell.render(this.ctx);
-                    if (!cell.isEmpty) {
-                        cell.inside.render(this.ctx);
+        const step = () => {
+            this._stats.begin();
+            this.ctx.clearRect(0, 0, this._width, this._height);
+            _.forEach(this.matrix, (arr) => {
+                _.forEach(arr, (cell) => {
+                        cell.render(this.ctx);
+
+                        if (!cell.isEmpty) {
+                            cell.inside.render(this.ctx);
+                        }
                     }
-                }
-            )
-        });
-    }
+                )
+            });
+
+            this._stats.end();
+            window.requestAnimationFrame(() => step());
+        };
+
+        window.requestAnimationFrame(() => step());
+
+     }
 
 }
-
 
 window.onload = () => (new Main());
