@@ -5,8 +5,33 @@ html
         meta(http-equiv="x-ua-compatible", content="ie=edge")
         title opa_game
         meta(name="viewport", content="width=device-width, initial-scale=1")
+        meta(name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no")
         link(rel="stylesheet", href="css/normalize.css")
         link(rel="stylesheet", href="css/main.css")
+        link(rel="stylesheet", href="css/bootstrap.min.css")
     body
-        canvas#canvas.canvas
+        div.container
+            div.row
+                div.col-xs-3
+                div.col-xs-6
+                    canvas#canvas.canvas(style="position: relative")
+                div.col-xs-3
+            div.row(style="margin-bottom: 5px;")
+                div.col-xs-1
+                    div Health:
+                div.col-xs-11
+                    div#health.progress-bar.progress-bar-warning(role="progressbar" aria-valuenow="40" aria-valuemin="0" aria-valuemax="100" style="width: 60%;") 60
+            div.row(style="margin-bottom: 5px;")
+                div.col-xs-1
+                    div Damage:
+                div.col-xs-11
+                    div#damage.progress-bar.progress-bar-danger(role="progressbar" aria-valuenow="40" aria-valuemin="0" aria-valuemax="100" style="width: 60%;") 60
+            div.row(style="margin-bottom: 5px;")
+                div.col-xs-1
+                    div Speed:
+                div.col-xs-11
+                    div#speed.progress-bar.progress-bar-info(role="progressbar" aria-valuenow="40" aria-valuemin="0" aria-valuemax="100" style="width: 60%;") 60
+        script(src="dist/js/libs/lodash.js")
+        script(src="dist/js/libs/stats.js")
         script(src="dist/js/main.js")
+        script(src="dist/js/bootstrap.min.js")
