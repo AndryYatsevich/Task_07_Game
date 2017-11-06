@@ -341,6 +341,7 @@ class Movable extends DrawableObject {
             currentPosition.inside.pickUpBonus(playerPosition.inside.getBonus());
             playerPosition.swapInside(currentPosition);
         }
+        console.log(`newX: ${newX}, newY: ${newY}`);
     }
 
     static canMove(x, y, matrix) {
@@ -406,6 +407,14 @@ class Shoot extends Movable {
         } else {
             currentPosition.extinction();
         }
+
+    }
+
+    render(ctx) {
+        ctx.beginPath();
+        ctx.arc(this._width * this._x + 16, this._height * this._y + 16, 3, 0, 360);
+        ctx.fillStyle = 'black';
+        ctx.fill();
     }
 }
 
@@ -430,7 +439,6 @@ class Character extends Movable {
     }
 
 
-
     set health(newHealth) {
         if (!newHealth || newHealth < 0) {
             throw new Error('error');
@@ -438,10 +446,10 @@ class Character extends Movable {
         this._health = newHealth;
     }
 
-    hit(damage) {
-        this.inside._health -= damage;
-        if (this.inside._health <= 0) {
-            this.inside.extinction();
+    hit(damage, position) {
+        this._health -= damage;
+        if (this._health <= 0) {
+            position.extinction();
         }
     }
 }
@@ -451,15 +459,16 @@ class Mob extends Character {
         return Math.random() * (max - min) + min;
     }
 
-    constructor(x, y, speed) {
+    constructor(x, y, speed, damage) {
         super(...arguments);
         this._direction = sideMovement.LEFT;
         this.isDead = false;
         this._interval = 0;
         this._speed = Mob.getRandomArbitrary(0.3, 3.5);
+        this._damage = damage;
     }
 
-    move(matrix) {
+    move(matrix, observer) {
         this._interval += 100;
         if (this._interval < this._speed * 1000) {
             return;
@@ -468,7 +477,7 @@ class Mob extends Character {
         this._interval = 0;
         const currentPosition = matrix[this._y][this._x];
 
-        console.log(`x: ${this._x}, y:  ${this._y}`);
+        //console.log(`x: ${this._x}, y:  ${this._y}`);
 
         let newX, newY, mobPosition;
         switch (this._direction) {
@@ -495,17 +504,29 @@ class Mob extends Character {
                 break;
         }
 
-        console.log(`canMove: ${Movable.canMove(newX, newY, matrix)}`);
-        console.log(`newX: ${newX}, newY: ${newY}`);
+        //console.log(`canMove: ${Movable.canMove(newX, newY, matrix)}`);
+        //console.log(`newX: ${newX}, newY: ${newY}`);
 
         if (!Movable.canMove(newX, newY, matrix)) {
             this._direction = Math.round(Mob.getRandomArbitrary(1, 4));
-            console.log(`direction: ${this._direction}`);
+            //console.log(`direction: ${this._direction}`);
             return;
         }
 
         mobPosition = matrix[newY][newX];
-        if (!mobPosition.isBarrier && !mobPosition.isMob && !mobPosition.isPlayer && !mobPosition.isBonus) {
+        if (mobPosition.isPlayer) {
+            if (mobPosition.inside._health > 0) {
+                mobPosition.inside.hit(this._damage, mobPosition);
+                this._direction = Math.round(Mob.getRandomArbitrary(1, 4));
+                observer.broadcast(mobPosition.inside._health);
+                console.log(mobPosition.inside._health);
+            } else {
+                this._y = _.isNumber(newY) ? newY : this._y;
+                this._x = _.isNumber(newX) ? newX : this._x;
+                mobPosition.swapInside(currentPosition);
+            }
+
+        } else if (!mobPosition.isBarrier && !mobPosition.isMob && !mobPosition.isBonus) {
             this._y = _.isNumber(newY) ? newY : this._y;
             this._x = _.isNumber(newX) ? newX : this._x;
             mobPosition.swapInside(currentPosition);
@@ -568,6 +589,7 @@ const LEGEND = {
     s: Shoot
 };
 
+
 const MATRIX_PATTERN =
     `o * * b b b * * * * m b b o
     * * * m b b * * * o * * b *
@@ -582,6 +604,7 @@ class Main {
 
         this.action();
         this.on();
+
         this.statsRegister(); // нитрогай
     }
 
@@ -597,26 +620,49 @@ class Main {
 
     on() {
         window.addEventListener('keydown', (e) => this.movePlayer(e));
+        window.addEventListener('keydown', (e) => this.moveShoot(e));
     }
 
-    movePlayer(event) {
+    moveShoot(event) {
+        let shoot = new Shoot(this.player._x, this.player._y);
+        console.log(shoot);
         switch (event.keyCode) {
-            case KEY_CODES.UP:
-                this.player.move(sideMovement.UP, this.matrix);
+            case KEY_CODES.ARROW_UP:
+                shoot.move(sideMovement.UP, this.matrix);
                 break;
-            case KEY_CODES.DOWN:
-                this.player.move(sideMovement.DOWN, this.matrix);
+            case KEY_CODES.ARROW_DOWN:
+                shoot.move(sideMovement.DOWN, this.matrix);
                 break;
-            case KEY_CODES.LEFT:
-                this.player.move(sideMovement.LEFT, this.matrix);
+            case KEY_CODES.ARROW_LEFT:
+                shoot.move(sideMovement.LEFT, this.matrix);
                 break;
-            case KEY_CODES.RIGHT:
-                this.player.move(sideMovement.RIGHT, this.matrix);
+            case KEY_CODES.ARROW_RIGHT:
+                shoot.move(sideMovement.RIGHT, this.matrix);
                 break;
             default:
                 break;
         }
+    }
 
+    movePlayer(event) {
+        if (!this.player.isDead) {
+            switch (event.keyCode) {
+                case KEY_CODES.UP:
+                    this.player.move(sideMovement.UP, this.matrix);
+                    break;
+                case KEY_CODES.DOWN:
+                    this.player.move(sideMovement.DOWN, this.matrix);
+                    break;
+                case KEY_CODES.LEFT:
+                    this.player.move(sideMovement.LEFT, this.matrix);
+                    break;
+                case KEY_CODES.RIGHT:
+                    this.player.move(sideMovement.RIGHT, this.matrix);
+                    break;
+                default:
+                    break;
+            }
+        }
         // this.render();
     }
 
@@ -625,10 +671,15 @@ class Main {
         this.ctx = canvas.getContext('2d');
         this._width = canvas.width = CELL_SIZE * _.maxBy(this.matrix, (v) => v.length).length;
         this._height = canvas.height = CELL_SIZE * this.matrix.length;
-        let healthBar =  document.getElementById('health');
-        let speedBar =  document.getElementById('speed');
-        let damageBar =  document.getElementById('damage');
+        let healthBar = document.getElementById('health');
+        let speedBar = document.getElementById('speed');
+        let damageBar = document.getElementById('damage');
+        const observer = new EventObserver();
 
+        observer.subscribe((v) => {
+            healthBar.style.width = `${v}%`;
+            console.log('takoe');
+        });
 
         this._mobs = [];
 
@@ -646,6 +697,7 @@ class Main {
                 }
             }
         }
+
         healthBar.style.width = `${this.player.health}%`;
         speedBar.style.width = `${this.player.speed}%`;
         damageBar.style.width = `${this.player.damage}%`;
@@ -695,8 +747,27 @@ class Main {
 
         window.requestAnimationFrame(() => step());
 
-     }
+    }
 
+
+}
+
+class EventObserver {
+    constructor() {
+        this.observers = []
+    }
+
+    subscribe(fn) {
+        this.observers.push(fn)
+    }
+
+    unsubscribe(fn) {
+        this.observers = this.observers.filter(subscriber => subscriber !== fn)
+    }
+
+    broadcast(data) {
+        this.observers.forEach(subscriber => subscriber(data))
+    }
 }
 
 window.onload = () => (new Main());
