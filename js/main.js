@@ -214,8 +214,9 @@ class Cell extends DrawableObject {
     }
 
     swapInside(cell) {
-        if (this.isMob) {
-            this.inside.isDead = true;
+        if (this.isShoot) {
+            cell.inside.hit(this.inside.damage, cell);
+            this.inside.isWasted = true;
         }
 
         this.inside = cell.inside;
@@ -225,6 +226,9 @@ class Cell extends DrawableObject {
     extinction() {
         if (this.inside instanceof Character) {
             this.inside.isDead = true;
+        }
+        if (this.inside instanceof Shoot) {
+            this.inside.isWasted = true;
         }
         this.inside = null;
     }
@@ -255,7 +259,7 @@ class Barrier extends DrawableObject {
 
 class Bonus extends DrawableObject {
     static getTypes() {
-        return ['apple', 'melon', 'pear'];
+        return ['apple', 'melon', 'pear', 'orange'];
     }
 
     constructor(x, y, type) {
@@ -272,13 +276,17 @@ class Bonus extends DrawableObject {
                 this._bonusHealth = 7;
                 this._bonusSpeed = 6;
                 break;
+            case TYPES[3]:
+                this._bonusDamage = 7;
+                this._bonusHealth = 10;
+                break;
             default:
                 break;
         }
     }
 
     getBonus() {
-        return {h: this._bonusHealth, s: this._bonusSpeed};
+        return {h: this._bonusHealth, s: this._bonusSpeed, d: this._bonusDamage};
     }
 
     render(ctx) {
@@ -333,12 +341,12 @@ class Movable extends DrawableObject {
         }
         playerPosition = matrix[newY][newX];
         if (!playerPosition.isBarrier) {
+            if (playerPosition.isBonus) {
+                currentPosition.inside.pickUpBonus(playerPosition.inside.getBonus());
+            }
+
             this._y = _.isNumber(newY) ? newY : this._y;
             this._x = _.isNumber(newX) ? newX : this._x;
-            playerPosition.swapInside(currentPosition);
-        }
-        if (playerPosition.isBonus) {
-            currentPosition.inside.pickUpBonus(playerPosition.inside.getBonus());
             playerPosition.swapInside(currentPosition);
         }
         console.log(`newX: ${newX}, newY: ${newY}`);
@@ -358,6 +366,15 @@ class Movable extends DrawableObject {
         }
         this._speed = newSpeed;
     }
+
+    hit(damage, position) {
+        this._health -= damage;
+        if (this._health <= 0) {
+            position.extinction();
+        }
+        this._eventObserver.broadcast({h: this._health});
+    }
+
 }
 
 class Shoot extends Movable {
@@ -365,47 +382,75 @@ class Shoot extends Movable {
         super(x, y);
         this._damage = damage;
         this._direction = direction;
+        this.isWasted = false;
     }
 
-    getDamage() {
+    get damage() {
         return this._damage;
     }
 
-    move(direction, matrix) {
+    setDirection(direction) {
+        return this._direction = direction;
+    }
+
+    move(matrix, isFirstMove = false) {
         const currentPosition = matrix[this._y][this._x];
+        console.log(currentPosition, this._y, this._x, this._direction);
         let newX, newY, shootPosition;
         switch (this._direction) {
             case sideMovement.RIGHT:
                 newX = this._x + 1;
-                shootPosition = matrix[this._y][newX];
+                newY = this._y;
 
                 break;
             case (sideMovement.LEFT):
                 newX = this._x - 1;
-                shootPosition = matrix[this._y][newX];
+                newY = this._y;
 
                 break;
             case (sideMovement.UP):
                 newY = this._y - 1;
-                shootPosition = matrix[newY][this._x];
+                newX = this._x;
 
                 break;
             case (sideMovement.DOWN):
                 newY = this._y + 1;
-                shootPosition = matrix[newY][this._x];
+                newX = this._x;
+
                 break;
             default:
                 break;
         }
-        if (shootPosition.isEmpty || shootPosition.isBonus) {
+
+        if (!Movable.canMove(newX, newY, matrix)) {
+            if (!isFirstMove) {
+                currentPosition.extinction();
+            }
+            this.isWasted = true;
+
+            return;
+        }
+        shootPosition = matrix[newY][newX];
+        console.log('---', shootPosition, currentPosition);
+        if (shootPosition.isEmpty) {
             this._y = _.isNumber(newY) ? newY : this._y;
             this._x = _.isNumber(newX) ? newX : this._x;
-            shootPosition.swapInside(currentPosition);
+            if (isFirstMove) {
+                shootPosition.inside = this;
+
+            } else {
+                shootPosition.swapInside(currentPosition);
+            }
         } else if (shootPosition.isPlayer || shootPosition.isMob) {
-            shootPosition.hit(this._damage);
-            currentPosition.extinction();
+            if (!isFirstMove) {
+                currentPosition.extinction();
+            }
+            shootPosition.inside.hit(this._damage, shootPosition);
+
         } else {
-            currentPosition.extinction();
+            if (!isFirstMove) {
+                currentPosition.extinction();
+            }
         }
 
     }
@@ -424,6 +469,7 @@ class Character extends Movable {
         this._health = health;
         this._speed = speed;
         this._damage = damage;
+        this._eventObserver = new EventObserver();
     }
 
     get health() {
@@ -438,37 +484,39 @@ class Character extends Movable {
         return this._damage;
     }
 
+    get eventObserver() {
+        return this._eventObserver;
+    }
+
 
     set health(newHealth) {
         if (!newHealth || newHealth < 0) {
             throw new Error('error');
         }
         this._health = newHealth;
+        this._eventObserver.broadcast({h: newHealth});
     }
 
-    hit(damage, position) {
-        this._health -= damage;
-        if (this._health <= 0) {
-            position.extinction();
-        }
-    }
+
 }
 
 class Mob extends Character {
     static getRandomArbitrary(min, max) {
         return Math.random() * (max - min) + min;
+
     }
 
-    constructor(x, y, speed, damage) {
+    constructor(x, y, speed, damage = 10) {
         super(...arguments);
         this._direction = sideMovement.LEFT;
         this.isDead = false;
         this._interval = 0;
         this._speed = Mob.getRandomArbitrary(0.3, 3.5);
-        this._damage = damage;
+        this._damage = Math.round(Mob.getRandomArbitrary(1, 5));
+
     }
 
-    move(matrix, observer) {
+    move(matrix) {
         this._interval += 100;
         if (this._interval < this._speed * 1000) {
             return;
@@ -518,7 +566,7 @@ class Mob extends Character {
             if (mobPosition.inside._health > 0) {
                 mobPosition.inside.hit(this._damage, mobPosition);
                 this._direction = Math.round(Mob.getRandomArbitrary(1, 4));
-                observer.broadcast(mobPosition.inside._health);
+
                 console.log(mobPosition.inside._health);
             } else {
                 this._y = _.isNumber(newY) ? newY : this._y;
@@ -532,7 +580,7 @@ class Mob extends Character {
             mobPosition.swapInside(currentPosition);
         } else {
             this._direction = Math.round(Mob.getRandomArbitrary(1, 4));
-            console.log(this._direction);
+            //console.log(this._direction);
         }
     }
 
@@ -546,18 +594,33 @@ class Mob extends Character {
 class Player extends Character {
     constructor(x, y) {
         super(...arguments);
+
     }
 
+    get x() {
+        return this._x;
+    }
+
+    get y() {
+        return this._y;
+    }
+
+    moveThrottle = _.throttle(super.move, 800);
+
     pickUpBonus(bonus) {
-
-        const bonus2 = bonus.getBonus();
-        if (bonus2.h) {
-            this.health += bonus2.h;
+        if (bonus.h) {
+            this._health += bonus.h;
         }
 
-        if (bonus2.s) {
-            this.speed += bonus2.s;
+        if (bonus.s) {
+            this._speed += bonus.s;
+            this.moveThrottle = _.throttle(super.move, (1000 - this.speed * 100) < 0 ? 0 : 1000 - this.speed * 100);
         }
+
+        if(bonus.d){
+            this._damage += bonus.d;
+        }
+        this._eventObserver.broadcast({s: this.speed, h: this.health, d: this.damage});
     }
 
     render(ctx) {
@@ -579,24 +642,27 @@ const KEY_CODES = {
     ARROW_RIGHT: 39
 };
 
-
 const LEGEND = {
-    o: Bonus,
     b: Barrier,
     c: Cell,
     p: Player,
     m: Mob,
-    s: Shoot
+    s: Shoot,
+    w: (x, y) => (new Bonus(x, y, 'melon')),
+    q: (x, y) => (new Bonus(x, y, 'pear')),
+    o: (x, y) => (new Bonus(x, y, 'apple')),
+    k: (x, y) => (new Bonus(x, y, 'orange'))
+
+
 };
 
-
 const MATRIX_PATTERN =
-    `o * * b b b * * * * m b b o
-    * * * m b b * * * o * * b *
+    `q * * b b b * * * * m b b o
+    * w * m b b * * * w * * b *
     * * * * b b * * * * * * b *
-    b b * * * * * * * * * * b *
+    b b * * * * * k * * * * b *
     b b * p * * b * * b b * * *
-    b b b * m o b b * * * * o m`.replace(/ /g, '');
+    b b b * m o b b * * * * q m`.replace(/ /g, '');
 
 class Main {
     constructor() {
@@ -620,47 +686,44 @@ class Main {
 
     on() {
         window.addEventListener('keydown', (e) => this.movePlayer(e));
-        window.addEventListener('keydown', (e) => this.moveShoot(e));
-    }
 
-    moveShoot(event) {
-        let shoot = new Shoot(this.player._x, this.player._y);
-        console.log(shoot);
-        switch (event.keyCode) {
-            case KEY_CODES.ARROW_UP:
-                shoot.move(sideMovement.UP, this.matrix);
-                break;
-            case KEY_CODES.ARROW_DOWN:
-                shoot.move(sideMovement.DOWN, this.matrix);
-                break;
-            case KEY_CODES.ARROW_LEFT:
-                shoot.move(sideMovement.LEFT, this.matrix);
-                break;
-            case KEY_CODES.ARROW_RIGHT:
-                shoot.move(sideMovement.RIGHT, this.matrix);
-                break;
-            default:
-                break;
-        }
     }
 
     movePlayer(event) {
+
         if (!this.player.isDead) {
+            let shoot;
             switch (event.keyCode) {
                 case KEY_CODES.UP:
-                    this.player.move(sideMovement.UP, this.matrix);
+                    this.player.moveThrottle(sideMovement.UP, this.matrix);
                     break;
                 case KEY_CODES.DOWN:
-                    this.player.move(sideMovement.DOWN, this.matrix);
+                    this.player.moveThrottle(sideMovement.DOWN, this.matrix);
                     break;
                 case KEY_CODES.LEFT:
-                    this.player.move(sideMovement.LEFT, this.matrix);
+                    this.player.moveThrottle(sideMovement.LEFT, this.matrix);
                     break;
                 case KEY_CODES.RIGHT:
-                    this.player.move(sideMovement.RIGHT, this.matrix);
+                    this.player.moveThrottle(sideMovement.RIGHT, this.matrix);
+                    break;
+                case KEY_CODES.ARROW_UP:
+                    shoot = new Shoot(this.player.x, this.player.y, this.player.damage, sideMovement.UP);
+                    break;
+                case KEY_CODES.ARROW_DOWN:
+                    shoot = new Shoot(this.player.x, this.player.y, this.player.damage, sideMovement.DOWN);
+                    break;
+                case KEY_CODES.ARROW_LEFT:
+                    shoot = new Shoot(this.player.x, this.player.y, this.player.damage, sideMovement.LEFT);
+                    break;
+                case KEY_CODES.ARROW_RIGHT:
+                    shoot = new Shoot(this.player.x, this.player.y, this.player.damage, sideMovement.RIGHT);
                     break;
                 default:
                     break;
+            }
+            if (shoot) {
+                shoot.move(this.matrix, true);
+                this._shoots.push(shoot);
             }
         }
         // this.render();
@@ -674,14 +737,9 @@ class Main {
         let healthBar = document.getElementById('health');
         let speedBar = document.getElementById('speed');
         let damageBar = document.getElementById('damage');
-        const observer = new EventObserver();
-
-        observer.subscribe((v) => {
-            healthBar.style.width = `${v}%`;
-            console.log('takoe');
-        });
 
         this._mobs = [];
+        this._shoots = [];
 
         for (let i = 0; i < this.matrix.length; i++) {
             for (let j = 0; j < this.matrix[i].length; j++) {
@@ -689,7 +747,6 @@ class Main {
 
                 if (cell.isPlayer) {
                     this.player = cell.inside;
-
                 }
 
                 if (cell.isMob) {
@@ -699,13 +756,37 @@ class Main {
         }
 
         healthBar.style.width = `${this.player.health}%`;
+        healthBar.innerHTML = `${this.player.health}`;
         speedBar.style.width = `${this.player.speed}%`;
+        speedBar.innerHTML = `${this.player.speed}`;
         damageBar.style.width = `${this.player.damage}%`;
+        damageBar.innerHTML = `${this.player.damage}`;
         setInterval(() => this.goMob(), 100);
+        setInterval(() => this.goShoots(), 300);
         this.render();
 
         console.log(this.player);
 
+        this.player.eventObserver.subscribe(({h, s, d}) => {
+
+            if (_.isNumber(h) && h < 0) {
+                healthBar.style.width = `0%`;
+
+            } else {
+                healthBar.style.width = `${h}%`;
+                healthBar.innerHTML = `${h}`;
+            }
+            if (_.isNumber(s)) {
+                speedBar.style.width = `${s}%`;
+                speedBar.innerHTML = `${s}`;
+            }
+            if (_.isNumber(d)) {
+                damageBar.style.width = `${d}%`;
+                damageBar.innerHTML = `${d}`;
+            }
+
+            console.log('takoe');
+        });
         /* const andreyLox = _
             .chain(this.matrix)
             .map((subArr) => (_
@@ -718,6 +799,12 @@ class Main {
             .first()
             .value()
             .inside; */
+    }
+
+    goShoots() {
+        _.each(this._shoots, (v) => {
+            !v.isWasted && v.move(this.matrix)
+        });
     }
 
     goMob() {
@@ -754,19 +841,19 @@ class Main {
 
 class EventObserver {
     constructor() {
-        this.observers = []
+        this.observers = [];
     }
 
     subscribe(fn) {
-        this.observers.push(fn)
+        this.observers.push(fn);
     }
 
     unsubscribe(fn) {
-        this.observers = this.observers.filter(subscriber => subscriber !== fn)
+        this.observers = this.observers.filter((subscriber) => subscriber !== fn);
     }
 
     broadcast(data) {
-        this.observers.forEach(subscriber => subscriber(data))
+        this.observers.forEach((subscriber) => subscriber(data));
     }
 }
 
