@@ -444,13 +444,15 @@ class Shoot extends Movable {
         } else if (shootPosition.isPlayer || shootPosition.isMob) {
             if (!isFirstMove) {
                 currentPosition.extinction();
+
             }
             shootPosition.inside.hit(this._damage, shootPosition);
-
+            this.isWasted = true;
         } else {
             if (!isFirstMove) {
                 currentPosition.extinction();
             }
+            this.isWasted = true;
         }
 
     }
@@ -617,7 +619,7 @@ class Player extends Character {
             this.moveThrottle = _.throttle(super.move, (1000 - this.speed * 100) < 0 ? 0 : 1000 - this.speed * 100);
         }
 
-        if(bonus.d){
+        if (bonus.d) {
             this._damage += bonus.d;
         }
         this._eventObserver.broadcast({s: this.speed, h: this.health, d: this.damage});
