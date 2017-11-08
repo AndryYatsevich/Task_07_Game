@@ -365,7 +365,6 @@ class Movable extends DrawableObject {
             this._x = _.isNumber(newX) ? newX : this._x;
             playerPosition.swapInside(currentPosition);
         }
-        console.log(`newX: ${newX}, newY: ${newY}`);
     }
 
     static canMove(x, y, matrix) {
@@ -386,7 +385,7 @@ class Movable extends DrawableObject {
     tick() {
         if (_.isNumber(this._oldX)) {
             const diff = this._oldX < this._x ? this._bufferX - this._x * this._width : this._x * this._width - this._bufferX;
-            console.log(diff);
+
             if (diff + this.speed < this.speed) {
 
                 this._bufferX += (this._oldX < this._x) ? this.speed : -this.speed;
@@ -403,7 +402,7 @@ class Movable extends DrawableObject {
 
         if (_.isNumber(this._oldY)) {
             const diff = this._oldY < this._y ? this._bufferY - this._y * this._height : this._y * this._height - this._bufferY;
-            console.log(diff);
+
             if (diff + this.speed < this.speed) {
 
                 this._bufferY += (this._oldY < this._y) ? this.speed : -this.speed;
@@ -583,8 +582,6 @@ class Mob extends Character {
         this._interval = 0;
         const currentPosition = matrix[this._y][this._x];
 
-        //console.log(`x: ${this._x}, y:  ${this._y}`);
-
         let newX, newY, mobPosition;
         switch (this._direction) {
             case sideMovement.RIGHT:
@@ -610,12 +607,8 @@ class Mob extends Character {
                 break;
         }
 
-        //console.log(`canMove: ${Movable.canMove(newX, newY, matrix)}`);
-        //console.log(`newX: ${newX}, newY: ${newY}`);
-
         if (!Movable.canMove(newX, newY, matrix)) {
             this._direction = Math.round(Mob.getRandomArbitrary(1, 4));
-            //console.log(`direction: ${this._direction}`);
             return;
         }
 
@@ -660,10 +653,10 @@ class Mob extends Character {
         ctx.fillRect(x, progressOffset - progressSize * 4, (this._width / 3) * this.health * 0.01, progressSize);
 
         ctx.fillStyle = 'red';
-        ctx.fillRect(x, progressOffset - progressSize * 2, (this._width / 3) * this.damage * 0.1, progressSize);
+        ctx.fillRect(x, progressOffset - progressSize * 2, (this._width / 3) * this.damage * 0.1 < this._width / 3 ? (this._width / 3) * this.damage * 0.1 : this._width / 3, progressSize);
 
         ctx.fillStyle = 'blue';
-        ctx.fillRect(x, progressOffset, (this._width / 3) * this.speed * 0.1, progressSize);
+        ctx.fillRect(x, progressOffset, (this._width / 3) / this.speed < this._width / 3 ? (this._width / 3) / this.speed : this._width / 3, progressSize);
 
     }
 }
@@ -867,8 +860,6 @@ class Main {
                 damageBar.style.width = `${d}%`;
                 damageBar.innerHTML = `${d}`;
             }
-
-            console.log('takoe');
         });
         /* const andreyLox = _
             .chain(this.matrix)
@@ -903,7 +894,12 @@ class Main {
             _.forEach(this.matrix, (arr) => {
                 _.forEach(arr, (cell) => {
                         cell.render(this.ctx);
+                    }
+                )
+            });
 
+            _.forEach(this.matrix, (arr) => {
+                _.forEach(arr, (cell) => {
                         if (!cell.isEmpty) {
                             cell.inside.render(this.ctx);
                         }
