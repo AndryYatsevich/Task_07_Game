@@ -163,7 +163,7 @@
  *          };
  *      }
  */
-const CELL_SIZE = 32;
+const CELL_SIZE = 64;
 
 class DrawableObject {
     constructor(x = 0, y = 0, width = CELL_SIZE, heigth = CELL_SIZE) {
@@ -211,6 +211,16 @@ class Cell extends DrawableObject {
 
     get isEmpty() {
         return this.inside === null || this.inside === undefined;
+    }
+
+    set x(newX) {
+        this._oldX = this._x;
+        this._x = newX;
+    }
+
+    set y(newY) {
+        this._oldY = this._y;
+        this._y = newY;
     }
 
     swapInside(cell) {
@@ -291,7 +301,7 @@ class Bonus extends DrawableObject {
 
     render(ctx) {
         ctx.beginPath();
-        ctx.arc(this._width * this._x + 16, this._height * this._y + 16, 8, 0, 360);
+        ctx.arc(this._width * this._x + this._width / 2, this._height * this._y + this._height / 2, this._height / 4, 0, 360);
         ctx.fillStyle = 'pink';
         ctx.fill();
     }
@@ -340,11 +350,17 @@ class Movable extends DrawableObject {
             return;
         }
         playerPosition = matrix[newY][newX];
-        if (!playerPosition.isBarrier) {
+
+        if (playerPosition.isMob) {
+            if (playerPosition.inside._health > 0) {
+                playerPosition.inside.hit(this._damage, playerPosition);
+            }
+        } else if (!playerPosition.isBarrier) {
             if (playerPosition.isBonus) {
                 currentPosition.inside.pickUpBonus(playerPosition.inside.getBonus());
             }
-
+            this._oldX = _.isNumber(newX) ? this._x : this._oldX;
+            this._oldY = _.isNumber(newY) ? this._y : this._oldY;
             this._y = _.isNumber(newY) ? newY : this._y;
             this._x = _.isNumber(newX) ? newX : this._x;
             playerPosition.swapInside(currentPosition);
@@ -367,6 +383,42 @@ class Movable extends DrawableObject {
         this._speed = newSpeed;
     }
 
+    tick() {
+        if (_.isNumber(this._oldX)) {
+            const diff = this._oldX < this._x ? this._bufferX - this._x * this._width : this._x * this._width - this._bufferX;
+            console.log(diff);
+            if (diff + this.speed < this.speed) {
+
+                this._bufferX += (this._oldX < this._x) ? this.speed : -this.speed;
+
+            } else {
+                this._bufferX = this._x * this._width;
+                this._oldX = null;
+            }
+
+        } else {
+            this._bufferX = this._x * this._width;
+            this._oldX = null;
+        }
+
+        if (_.isNumber(this._oldY)) {
+            const diff = this._oldY < this._y ? this._bufferY - this._y * this._height : this._y * this._height - this._bufferY;
+            console.log(diff);
+            if (diff + this.speed < this.speed) {
+
+                this._bufferY += (this._oldY < this._y) ? this.speed : -this.speed;
+
+            } else {
+                this._bufferY = this._y * this._height;
+                this._oldY = null;
+            }
+
+        } else {
+            this._bufferY = this._y * this._height;
+            this._oldY = null;
+        }
+    }
+
     hit(damage, position) {
         this._health -= damage;
         if (this._health <= 0) {
@@ -378,11 +430,12 @@ class Movable extends DrawableObject {
 }
 
 class Shoot extends Movable {
-    constructor(x, y, damage = 5, direction) {
+    constructor(x, y, damage = 5, direction, speed = 4) {
         super(x, y);
         this._damage = damage;
         this._direction = direction;
         this.isWasted = false;
+        this.speed = speed;
     }
 
     get damage() {
@@ -393,9 +446,10 @@ class Shoot extends Movable {
         return this._direction = direction;
     }
 
+
     move(matrix, isFirstMove = false) {
         const currentPosition = matrix[this._y][this._x];
-        console.log(currentPosition, this._y, this._x, this._direction);
+
         let newX, newY, shootPosition;
         switch (this._direction) {
             case sideMovement.RIGHT:
@@ -431,8 +485,9 @@ class Shoot extends Movable {
             return;
         }
         shootPosition = matrix[newY][newX];
-        console.log('---', shootPosition, currentPosition);
         if (shootPosition.isEmpty) {
+            this._oldX = _.isNumber(newX) ? this._x : this._oldX;
+            this._oldY = _.isNumber(newY) ? this._y : this._oldY;
             this._y = _.isNumber(newY) ? newY : this._y;
             this._x = _.isNumber(newX) ? newX : this._x;
             if (isFirstMove) {
@@ -454,19 +509,20 @@ class Shoot extends Movable {
             }
             this.isWasted = true;
         }
-
     }
 
     render(ctx) {
+        this.tick();
+
         ctx.beginPath();
-        ctx.arc(this._width * this._x + 16, this._height * this._y + 16, 3, 0, 360);
+        ctx.arc(this._bufferX + this._width / 2, this._bufferY + this._height / 2, this._height / 5, 0, 360);
         ctx.fillStyle = 'black';
         ctx.fill();
     }
 }
 
 class Character extends Movable {
-    constructor(x, y, health = 30, speed = 2, damage = 5) {
+    constructor(x, y, health = 100, speed = 2, damage = 5) {
         super(...arguments);
         this._health = health;
         this._speed = speed;
@@ -514,7 +570,7 @@ class Mob extends Character {
         this.isDead = false;
         this._interval = 0;
         this._speed = Mob.getRandomArbitrary(0.3, 3.5);
-        this._damage = Math.round(Mob.getRandomArbitrary(1, 5));
+        this._damage = Math.round(Mob.getRandomArbitrary(1, 15));
 
     }
 
@@ -564,19 +620,23 @@ class Mob extends Character {
         }
 
         mobPosition = matrix[newY][newX];
-        if (mobPosition.isPlayer) {
+        if (mobPosition.isPlayer || mobPosition.isMob) {
             if (mobPosition.inside._health > 0) {
                 mobPosition.inside.hit(this._damage, mobPosition);
                 this._direction = Math.round(Mob.getRandomArbitrary(1, 4));
 
                 console.log(mobPosition.inside._health);
             } else {
+                this._oldX = _.isNumber(newX) ? this._x : this._oldX;
+                this._oldY = _.isNumber(newY) ? this._y : this._oldY;
                 this._y = _.isNumber(newY) ? newY : this._y;
                 this._x = _.isNumber(newX) ? newX : this._x;
                 mobPosition.swapInside(currentPosition);
             }
 
         } else if (!mobPosition.isBarrier && !mobPosition.isMob && !mobPosition.isBonus) {
+            this._oldX = _.isNumber(newX) ? this._x : this._oldX;
+            this._oldY = _.isNumber(newY) ? this._y : this._oldY;
             this._y = _.isNumber(newY) ? newY : this._y;
             this._x = _.isNumber(newX) ? newX : this._x;
             mobPosition.swapInside(currentPosition);
@@ -587,8 +647,23 @@ class Mob extends Character {
     }
 
     render(ctx) {
+        this.tick();
+
         ctx.fillStyle = 'red';
-        ctx.fillRect(this._x * this._width + CELL_SIZE / 3, this._y * this._height + CELL_SIZE / 3, CELL_SIZE / 3, CELL_SIZE / 3);
+        const x = this._bufferX + this._width / 3;
+        ctx.fillRect(x, this._bufferY + this._height / 3, this._width / 3, this._height / 3);
+
+        ctx.fillStyle = 'orange';
+        const progressSize = 2;
+        const progressOffset = this._bufferY + this._height / 4;
+
+        ctx.fillRect(x, progressOffset - progressSize * 4, (this._width / 3) * this.health * 0.01, progressSize);
+
+        ctx.fillStyle = 'red';
+        ctx.fillRect(x, progressOffset - progressSize * 2, (this._width / 3) * this.damage * 0.1, progressSize);
+
+        ctx.fillStyle = 'blue';
+        ctx.fillRect(x, progressOffset, (this._width / 3) * this.speed * 0.1, progressSize);
 
     }
 }
@@ -626,8 +701,10 @@ class Player extends Character {
     }
 
     render(ctx) {
+        this.tick();
+
         ctx.beginPath();
-        ctx.arc(this._width * this._x + 16, this._height * this._y + 16, 5, 0, 360);
+        ctx.arc(this._bufferX + this._width / 2, this._bufferY + this._height / 2, this._height / 4, 0, 360);
         ctx.fillStyle = 'purple';
         ctx.fill();
     }
@@ -663,7 +740,11 @@ const MATRIX_PATTERN =
     * w * m b b * * * w * * b *
     * * * * b b * * * * * * b *
     b b * * * * * k * * * * b *
-    b b * p * * b * * b b * * *
+    b b * m * * b * * b b * * *
+    m * * * * * k * * b * * m *
+    * * * p * o * * * m * * * *
+    * * * * * * * * * * * * * *
+    * * * * * * * * * * * * * *
     b b b * m o b b * * * * q m`.replace(/ /g, '');
 
 class Main {
