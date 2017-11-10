@@ -166,11 +166,12 @@
 const CELL_SIZE = 64;
 
 class DrawableObject {
-    constructor(x = 0, y = 0, width = CELL_SIZE, heigth = CELL_SIZE) {
+    constructor(x = 0, y = 0, width = CELL_SIZE, heigth = CELL_SIZE, image) {
         this._x = x;
         this._y = y;
         this._width = width;
         this._height = heigth;
+        this._image = image;
     }
 
     get width() {
@@ -187,6 +188,12 @@ class Cell extends DrawableObject {
     constructor(inside, x, y) {
         super(x, y);
         this.inside = inside;
+        this._image = new Image();
+        let i = Math.round(Mob.getRandomArbitrary(0, 2));
+        let imageSrc = ['img/terrain/earth.png', 'img/terrain/road.bmp', 'img/terrain/road2.png'];
+        this._image.src = imageSrc[i];
+
+
     }
 
     get isBarrier() {
@@ -244,6 +251,7 @@ class Cell extends DrawableObject {
     }
 
     render(ctx) {
+        ctx.drawImage(this._image, CELL_SIZE * this._x, CELL_SIZE * this._y, CELL_SIZE, CELL_SIZE);
         ctx.strokeStyle = 'RGB(0, 0, 0)';
         ctx.strokeRect(CELL_SIZE * this._x, CELL_SIZE * this._y, CELL_SIZE, CELL_SIZE);
     }
@@ -258,37 +266,52 @@ class Barrier extends DrawableObject {
         super(x, y);
         const TYPES = Barrier.getTypes();
         this.type = _.indexOf(TYPES, type) >= 0 ? type : TYPES[0];
+        this._image = new Image();              // "Создаём" изображение
+        let i = Math.round(Mob.getRandomArbitrary(1, 4));
+        let imageSrc = ['img/terrain/pit.png', 'img/terrain/bushes0.png', 'img/terrain/bushes1.png', 'img/terrain/stone0.png', 'img/terrain/stone1.png'];
+        this._image.src = imageSrc[i];
+
     }
 
+
     render(ctx) {
-        ctx.fillStyle = 'black';
-        ctx.fillRect(this._x * this._width, this._y * this._height, this._width, this._height);
+        ctx.drawImage(this._image, 0, 0, 40, 40, CELL_SIZE * this._x + this._width / 4, CELL_SIZE * this._y + this._height / 5, CELL_SIZE / 2, CELL_SIZE / 2);
+        //ctx.fillStyle = 'black';
+        //ctx.fillRect(this._x * this._width, this._y * this._height, this._width, this._height);
     }
 
 }
 
 class Bonus extends DrawableObject {
     static getTypes() {
-        return ['apple', 'melon', 'pear', 'orange'];
+        return ['apple', 'melon', 'pear', 'cherry'];
     }
 
     constructor(x, y, type) {
         super(x, y);
         const TYPES = Bonus.getTypes();
+        this._image = new Image();
+        // let i = Math.round(Mob.getRandomArbitrary(0, 2));
+        //  let imageSrc = ['img/terrain/earth.png', 'img/terrain/road.bmp', 'img/terrain/road2.png'];
+        //this._image.src = imageSrc[i];
         switch (type) {
             case TYPES[0]:
                 this._bonusHealth = 5;
+                this._image.src = 'img/bonuses/apple.png';
                 break;
             case TYPES[1]:
                 this._bonusSpeed = 3;
+                this._image.src = 'img/bonuses/melon.png';
                 break;
             case TYPES[2]:
                 this._bonusHealth = 7;
                 this._bonusSpeed = 6;
+                this._image.src = 'img/bonuses/pear.png';
                 break;
             case TYPES[3]:
                 this._bonusDamage = 7;
-                this._bonusHealth = 10;
+                this._bonusSpeed = 3;
+                this._image.src = 'img/bonuses/cherry.png';
                 break;
             default:
                 break;
@@ -300,10 +323,11 @@ class Bonus extends DrawableObject {
     }
 
     render(ctx) {
-        ctx.beginPath();
-        ctx.arc(this._width * this._x + this._width / 2, this._height * this._y + this._height / 2, this._height / 4, 0, 360);
-        ctx.fillStyle = 'pink';
-        ctx.fill();
+        ctx.drawImage(this._image, 0, 0, 30, 30, CELL_SIZE * this._x + this._width / 4, CELL_SIZE * this._y + this._height / 4, CELL_SIZE / 2, CELL_SIZE / 2);
+        //ctx.beginPath();
+        // ctx.arc(this._width * this._x + this._width / 2, this._height * this._y + this._height / 2, this._height / 4, 0, 360);
+        // ctx.fillStyle = 'pink';
+        // ctx.fill();
     }
 
 
@@ -324,24 +348,29 @@ class Movable extends DrawableObject {
     }
 
     move(direction, matrix) {
+
         const currentPosition = matrix[this._y][this._x];
         let newX, newY, playerPosition;
         switch (direction) {
             case sideMovement.RIGHT:
                 newX = this._x + 1;
                 newY = this._y;
+                this.imagePosition = 97;
                 break;
             case (sideMovement.LEFT):
                 newX = this._x - 1;
                 newY = this._y;
+                this.imagePosition = 56;
                 break;
             case (sideMovement.UP):
                 newY = this._y - 1;
                 newX = this._x;
+                this.imagePosition = 170;
                 break;
             case (sideMovement.DOWN):
                 newY = this._y + 1;
                 newX = this._x;
+                this.imagePosition = 0;
                 break;
             default:
                 break;
@@ -382,13 +411,13 @@ class Movable extends DrawableObject {
         this._speed = newSpeed;
     }
 
-    tick() {
+    tick(speed) {
         if (_.isNumber(this._oldX)) {
             const diff = this._oldX < this._x ? this._bufferX - this._x * this._width : this._x * this._width - this._bufferX;
 
-            if (diff + this.speed < this.speed) {
+            if (diff + speed < speed) {
 
-                this._bufferX += (this._oldX < this._x) ? this.speed : -this.speed;
+                this._bufferX += (this._oldX < this._x) ? speed : -speed;
 
             } else {
                 this._bufferX = this._x * this._width;
@@ -403,9 +432,9 @@ class Movable extends DrawableObject {
         if (_.isNumber(this._oldY)) {
             const diff = this._oldY < this._y ? this._bufferY - this._y * this._height : this._y * this._height - this._bufferY;
 
-            if (diff + this.speed < this.speed) {
+            if (diff + speed < speed) {
 
-                this._bufferY += (this._oldY < this._y) ? this.speed : -this.speed;
+                this._bufferY += (this._oldY < this._y) ? speed : -speed;
 
             } else {
                 this._bufferY = this._y * this._height;
@@ -429,7 +458,7 @@ class Movable extends DrawableObject {
 }
 
 class Shoot extends Movable {
-    constructor(x, y, damage = 5, direction, speed = 4) {
+    constructor(x, y, damage = 5, direction, speed = 3.6) {
         super(x, y);
         this._damage = damage;
         this._direction = direction;
@@ -511,7 +540,7 @@ class Shoot extends Movable {
     }
 
     render(ctx) {
-        this.tick();
+        this.tick(this.speed);
 
         ctx.beginPath();
         ctx.arc(this._bufferX + this._width / 2, this._bufferY + this._height / 2, this._height / 5, 0, 360);
@@ -571,9 +600,14 @@ class Mob extends Character {
         this._speed = Mob.getRandomArbitrary(0.3, 3.5);
         this._damage = Math.round(Mob.getRandomArbitrary(1, 15));
 
+        this._image = new Image();              // "Создаём" изображение
+        this._image.src = 'img/actors/cars.png';
+        this.imagePosition = 0;
+
     }
 
     move(matrix) {
+
         this._interval += 100;
         if (this._interval < this._speed * 1000) {
             return;
@@ -587,21 +621,22 @@ class Mob extends Character {
             case sideMovement.RIGHT:
                 newX = this._x + 1;
                 newY = this._y;
-
+                this.imagePosition = 97;
                 break;
             case (sideMovement.LEFT):
                 newX = this._x - 1;
                 newY = this._y;
-
+                this.imagePosition = 58;
                 break;
             case (sideMovement.UP):
                 newY = this._y - 1;
                 newX = this._x;
-
+                this.imagePosition = 170;
                 break;
             case (sideMovement.DOWN):
                 newY = this._y + 1;
                 newX = this._x;
+                this.imagePosition = 0;
                 break;
             default:
                 break;
@@ -640,11 +675,12 @@ class Mob extends Character {
     }
 
     render(ctx) {
-        this.tick();
 
-        ctx.fillStyle = 'red';
+        this.tick(5 - this._speed);
+        ctx.drawImage(this._image, 55, this.imagePosition, 60, 70, this._bufferX + this._width / 8, this._bufferY + this._height / 3, 50, 50);
+        //ctx.fillStyle = 'red';
         const x = this._bufferX + this._width / 3;
-        ctx.fillRect(x, this._bufferY + this._height / 3, this._width / 3, this._height / 3);
+        //ctx.fillRect(x, this._bufferY + this._height / 3, this._width / 3, this._height / 3);
 
         ctx.fillStyle = 'orange';
         const progressSize = 2;
@@ -653,10 +689,12 @@ class Mob extends Character {
         ctx.fillRect(x, progressOffset - progressSize * 4, (this._width / 3) * this.health * 0.01, progressSize);
 
         ctx.fillStyle = 'red';
-        ctx.fillRect(x, progressOffset - progressSize * 2, (this._width / 3) * this.damage * 0.1 < this._width / 3 ? (this._width / 3) * this.damage * 0.1 : this._width / 3, progressSize);
+        const damageMob = (this._width / 3) * this.damage * 0.1;
+        ctx.fillRect(x, progressOffset - progressSize * 2, damageMob < this._width / 3 ? damageMob : this._width / 3, progressSize);
 
         ctx.fillStyle = 'blue';
-        ctx.fillRect(x, progressOffset, (this._width / 3) / this.speed < this._width / 3 ? (this._width / 3) / this.speed : this._width / 3, progressSize);
+        const speedMob = (this._width / 3) / this.speed;
+        ctx.fillRect(x, progressOffset, speedMob < this._width / 3 ? speedMob : this._width / 3, progressSize);
 
     }
 }
@@ -665,6 +703,9 @@ class Player extends Character {
     constructor(x, y) {
         super(...arguments);
 
+        this._image = new Image();              // "Создаём" изображение
+        this._image.src = 'img/actors/cars.png';
+        this.imagePosition = 0;
     }
 
     get x() {
@@ -694,14 +735,15 @@ class Player extends Character {
     }
 
     render(ctx) {
-        this.tick();
-
-        ctx.beginPath();
-        ctx.arc(this._bufferX + this._width / 2, this._bufferY + this._height / 2, this._height / 4, 0, 360);
-        ctx.fillStyle = 'purple';
-        ctx.fill();
+        this.tick(this._speed);
+        ctx.drawImage(this._image, 0, this.imagePosition, 50, 70, this._bufferX + this._width / 6, this._bufferY + this._height / 6, 40, 60);
+        //ctx.beginPath();
+        //ctx.arc(this._bufferX + this._width / 2, this._bufferY + this._height / 2, this._height / 4, 0, 360);
+        //ctx.fillStyle = 'purple';
+        //ctx.fill();
     }
 }
+
 
 const KEY_CODES = {
     UP: 87,
@@ -723,7 +765,7 @@ const LEGEND = {
     w: (x, y) => (new Bonus(x, y, 'melon')),
     q: (x, y) => (new Bonus(x, y, 'pear')),
     o: (x, y) => (new Bonus(x, y, 'apple')),
-    k: (x, y) => (new Bonus(x, y, 'orange'))
+    k: (x, y) => (new Bonus(x, y, 'cherry'))
 
 
 };
@@ -744,7 +786,7 @@ class Main {
     constructor() {
         this.matrix = _.map(_.split(MATRIX_PATTERN, '\n'), (arr, y) => (_.map(_.split(arr, ''), (v, x) => (new Cell(LEGEND[v] && new LEGEND[v](x, y), x, y)))));
 
-        this.action();
+
         this.on();
 
         this.statsRegister(); // нитрогай
@@ -761,7 +803,13 @@ class Main {
     }
 
     on() {
+        let start = document.getElementById('start');
+        let modalWindow = document.getElementById('modalWindow');
         window.addEventListener('keydown', (e) => this.movePlayer(e));
+        start.addEventListener('click', () =>{
+            modalWindow.style.display = `none`;
+            this.action()} );
+
 
     }
 
@@ -831,6 +879,8 @@ class Main {
             }
         }
 
+
+
         healthBar.style.width = `${this.player.health}%`;
         healthBar.innerHTML = `${this.player.health}`;
         speedBar.style.width = `${this.player.speed}%`;
@@ -845,7 +895,9 @@ class Main {
 
         this.player.eventObserver.subscribe(({h, s, d}) => {
 
-            if (_.isNumber(h) && h < 0) {
+            if (_.isNumber(h) && h <= 0) {
+                let playerDead = document.getElementById('playerDead');
+                playerDead.style.display = `block`;
                 healthBar.style.width = `0%`;
 
             } else {
@@ -894,18 +946,21 @@ class Main {
             _.forEach(this.matrix, (arr) => {
                 _.forEach(arr, (cell) => {
                         cell.render(this.ctx);
-                    }
-                )
-            });
-
-            _.forEach(this.matrix, (arr) => {
-                _.forEach(arr, (cell) => {
-                        if (!cell.isEmpty) {
+                        if (cell.isBarrier || cell.isBonus) {
                             cell.inside.render(this.ctx);
                         }
                     }
                 )
             });
+            this._mobs = _.filter(this._mobs, (v) => (!v.isDead));
+            this._shoots = _.filter(this._shoots, (v) => (!v.isWasted));
+            this._mobsLive = _.filter(this._mobs, (v) => (!v.isDead));
+            if(!this._mobsLive.length){
+                let endGame = document.getElementById('endGame');
+                endGame.style.display = `block`;
+            }
+
+            _.each([...this._mobs, ...this._shoots, this.player], (v) => v.render(this.ctx));
 
             this._stats.end();
             window.requestAnimationFrame(() => step());

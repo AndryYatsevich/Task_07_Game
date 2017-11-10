@@ -14,4 +14,54 @@ body {
     left: 0;
     right: 0;
     bottom: 0;
+    z-index: 1;
+}
+
+.modal-window {
+    position: absolute;
+    margin-left: 10%;
+    margin-right: 10%;
+    height: 100%;
+    width: 80%;
+    display: inline-block;
+    background-color: yellow;
+    z-index: 40;
+}
+
+.greeting {
+    text-align: center;
+    color: blue;
+}
+
+.end-game {
+    position: absolute;
+    margin-left: 10%;
+    margin-right: 10%;
+    height: 100%;
+    width: 80%;
+    display: none;
+    background-color: yellow;
+    z-index: 40;
+}
+
+.endModal {
+    text-align: center;
+    color: blue;
+}
+
+.player-dead {
+    position: absolute;
+    margin-left: 10%;
+    margin-right: 10%;
+    height: 100%;
+    width: 80%;
+    display: none;
+    background-color: yellow;
+    z-index: 40;
+}
+
+.endPlayerModal {
+    margin-top: 50px;
+    text-align: center;
+    color: blue;
 }
