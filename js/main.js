@@ -276,8 +276,6 @@ class Barrier extends DrawableObject {
 
     render(ctx) {
         ctx.drawImage(this._image, 0, 0, 40, 40, CELL_SIZE * this._x + this._width / 4, CELL_SIZE * this._y + this._height / 5, CELL_SIZE / 2, CELL_SIZE / 2);
-        //ctx.fillStyle = 'black';
-        //ctx.fillRect(this._x * this._width, this._y * this._height, this._width, this._height);
     }
 
 }
@@ -291,9 +289,7 @@ class Bonus extends DrawableObject {
         super(x, y);
         const TYPES = Bonus.getTypes();
         this._image = new Image();
-        // let i = Math.round(Mob.getRandomArbitrary(0, 2));
-        //  let imageSrc = ['img/terrain/earth.png', 'img/terrain/road.bmp', 'img/terrain/road2.png'];
-        //this._image.src = imageSrc[i];
+
         switch (type) {
             case TYPES[0]:
                 this._bonusHealth = 5;
@@ -324,13 +320,7 @@ class Bonus extends DrawableObject {
 
     render(ctx) {
         ctx.drawImage(this._image, 0, 0, 30, 30, CELL_SIZE * this._x + this._width / 4, CELL_SIZE * this._y + this._height / 4, CELL_SIZE / 2, CELL_SIZE / 2);
-        //ctx.beginPath();
-        // ctx.arc(this._width * this._x + this._width / 2, this._height * this._y + this._height / 2, this._height / 4, 0, 360);
-        // ctx.fillStyle = 'pink';
-        // ctx.fill();
     }
-
-
 }
 
 const sideMovement = {
@@ -464,6 +454,7 @@ class Shoot extends Movable {
         this._direction = direction;
         this.isWasted = false;
         this.speed = speed;
+        this._image = new Image();
     }
 
     get damage() {
@@ -483,22 +474,22 @@ class Shoot extends Movable {
             case sideMovement.RIGHT:
                 newX = this._x + 1;
                 newY = this._y;
-
+                this._image.src = 'img/swords/right.png';
                 break;
             case (sideMovement.LEFT):
                 newX = this._x - 1;
                 newY = this._y;
-
+                this._image.src = 'img/swords/left.png';
                 break;
             case (sideMovement.UP):
                 newY = this._y - 1;
                 newX = this._x;
-
+                this._image.src = 'img/swords/up.png';
                 break;
             case (sideMovement.DOWN):
                 newY = this._y + 1;
                 newX = this._x;
-
+                this._image.src = 'img/swords/down.png';
                 break;
             default:
                 break;
@@ -541,11 +532,7 @@ class Shoot extends Movable {
 
     render(ctx) {
         this.tick(this.speed);
-
-        ctx.beginPath();
-        ctx.arc(this._bufferX + this._width / 2, this._bufferY + this._height / 2, this._height / 5, 0, 360);
-        ctx.fillStyle = 'black';
-        ctx.fill();
+        ctx.drawImage(this._image, 0, 0, 50, 50, this._bufferX + this._width / 4, this._bufferY + this._height / 4, 50, 50);
     }
 }
 
@@ -574,7 +561,6 @@ class Character extends Movable {
         return this._eventObserver;
     }
 
-
     set health(newHealth) {
         if (!newHealth || newHealth < 0) {
             throw new Error('error');
@@ -582,8 +568,6 @@ class Character extends Movable {
         this._health = newHealth;
         this._eventObserver.broadcast({h: newHealth});
     }
-
-
 }
 
 class Mob extends Character {
@@ -599,15 +583,12 @@ class Mob extends Character {
         this._interval = 0;
         this._speed = Mob.getRandomArbitrary(0.3, 3.5);
         this._damage = Math.round(Mob.getRandomArbitrary(1, 15));
-
-        this._image = new Image();              // "Создаём" изображение
+        this._image = new Image();
         this._image.src = 'img/actors/cars.png';
         this.imagePosition = 0;
-
     }
 
     move(matrix) {
-
         this._interval += 100;
         if (this._interval < this._speed * 1000) {
             return;
@@ -652,8 +633,6 @@ class Mob extends Character {
             if (mobPosition.inside._health > 0) {
                 mobPosition.inside.hit(this._damage, mobPosition);
                 this._direction = Math.round(Mob.getRandomArbitrary(1, 4));
-
-                console.log(mobPosition.inside._health);
             } else {
                 this._oldX = _.isNumber(newX) ? this._x : this._oldX;
                 this._oldY = _.isNumber(newY) ? this._y : this._oldY;
@@ -670,7 +649,6 @@ class Mob extends Character {
             mobPosition.swapInside(currentPosition);
         } else {
             this._direction = Math.round(Mob.getRandomArbitrary(1, 4));
-            //console.log(this._direction);
         }
     }
 
@@ -678,9 +656,7 @@ class Mob extends Character {
 
         this.tick(5 - this._speed);
         ctx.drawImage(this._image, 55, this.imagePosition, 60, 70, this._bufferX + this._width / 8, this._bufferY + this._height / 3, 50, 50);
-        //ctx.fillStyle = 'red';
         const x = this._bufferX + this._width / 3;
-        //ctx.fillRect(x, this._bufferY + this._height / 3, this._width / 3, this._height / 3);
 
         ctx.fillStyle = 'orange';
         const progressSize = 2;
@@ -695,15 +671,13 @@ class Mob extends Character {
         ctx.fillStyle = 'blue';
         const speedMob = (this._width / 3) / this.speed;
         ctx.fillRect(x, progressOffset, speedMob < this._width / 3 ? speedMob : this._width / 3, progressSize);
-
     }
 }
 
 class Player extends Character {
     constructor(x, y) {
         super(...arguments);
-
-        this._image = new Image();              // "Создаём" изображение
+        this._image = new Image();
         this._image.src = 'img/actors/cars.png';
         this.imagePosition = 0;
     }
@@ -737,10 +711,6 @@ class Player extends Character {
     render(ctx) {
         this.tick(this._speed);
         ctx.drawImage(this._image, 0, this.imagePosition, 50, 70, this._bufferX + this._width / 6, this._bufferY + this._height / 6, 40, 60);
-        //ctx.beginPath();
-        //ctx.arc(this._bufferX + this._width / 2, this._bufferY + this._height / 2, this._height / 4, 0, 360);
-        //ctx.fillStyle = 'purple';
-        //ctx.fill();
     }
 }
 
@@ -785,20 +755,15 @@ const MATRIX_PATTERN =
 class Main {
     constructor() {
         this.matrix = _.map(_.split(MATRIX_PATTERN, '\n'), (arr, y) => (_.map(_.split(arr, ''), (v, x) => (new Cell(LEGEND[v] && new LEGEND[v](x, y), x, y)))));
-
-
         this.on();
-
         this.statsRegister(); // нитрогай
     }
 
     statsRegister() {
         this._stats = new window.Stats();
         this._stats.showPanel(0);
-
         this._stats.dom.style.left = 'auto';
         this._stats.dom.style.right = 0;
-
         document.body.appendChild(this._stats.dom);
     }
 
@@ -806,11 +771,10 @@ class Main {
         let start = document.getElementById('start');
         let modalWindow = document.getElementById('modalWindow');
         window.addEventListener('keydown', (e) => this.movePlayer(e));
-        start.addEventListener('click', () =>{
+        start.addEventListener('click', () => {
             modalWindow.style.display = `none`;
-            this.action()} );
-
-
+            this.action()
+        });
     }
 
     movePlayer(event) {
@@ -850,7 +814,6 @@ class Main {
                 this._shoots.push(shoot);
             }
         }
-        // this.render();
     }
 
     action() {
@@ -861,7 +824,6 @@ class Main {
         let healthBar = document.getElementById('health');
         let speedBar = document.getElementById('speed');
         let damageBar = document.getElementById('damage');
-
         this._mobs = [];
         this._shoots = [];
 
@@ -880,7 +842,6 @@ class Main {
         }
 
 
-
         healthBar.style.width = `${this.player.health}%`;
         healthBar.innerHTML = `${this.player.health}`;
         speedBar.style.width = `${this.player.speed}%`;
@@ -890,8 +851,6 @@ class Main {
         setInterval(() => this.goMob(), 100);
         setInterval(() => this.goShoots(), 300);
         this.render();
-
-        console.log(this.player);
 
         this.player.eventObserver.subscribe(({h, s, d}) => {
 
@@ -955,7 +914,7 @@ class Main {
             this._mobs = _.filter(this._mobs, (v) => (!v.isDead));
             this._shoots = _.filter(this._shoots, (v) => (!v.isWasted));
             this._mobsLive = _.filter(this._mobs, (v) => (!v.isDead));
-            if(!this._mobsLive.length){
+            if (!this._mobsLive.length) {
                 let endGame = document.getElementById('endGame');
                 endGame.style.display = `block`;
             }
@@ -965,12 +924,8 @@ class Main {
             this._stats.end();
             window.requestAnimationFrame(() => step());
         };
-
         window.requestAnimationFrame(() => step());
-
     }
-
-
 }
 
 class EventObserver {
