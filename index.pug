@@ -5,8 +5,81 @@ html
         meta(http-equiv="x-ua-compatible", content="ie=edge")
         title opa_game
         meta(name="viewport", content="width=device-width, initial-scale=1")
+        meta(name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no")
         link(rel="stylesheet", href="css/normalize.css")
         link(rel="stylesheet", href="css/main.css")
+        link(rel="stylesheet", href="css/bootstrap.min.css")
     body
-        canvas#canvas.canvas
+        div#modalWindow.modal-window
+            p.greeting
+                |Дратути!
+                br
+                | Для управлвления используйте клавиши:
+                br
+                | w - двигаться вверх
+                br
+                | a - двигаться влево
+                br
+                | s - двигаться вниз
+                br
+                | d - двигаться вправо
+                br
+                | Чтобы стрелуть, используй стрлеки:
+                br
+                | стрелка вверх - стрелять вверх и тд..
+                br
+                | Твоя задача убить всех копов!
+                br
+                | Для того чтобы начать бойню, нажми старт!
+                br
+                | Удачи!
+                br
+                button#start.btn.btn-success Старт!
+        div#endGame.end-game
+            p.endModal
+                | Поздравляю! Вы уничтожили всех копов(или он сами друг друга перебили)!
+                br
+                | Это, пожалуй, лучшая победа! Если вам понравилась игра, поддержите проект переведя деньги на карту
+                b  подробнее..
+                |
+                br
+                | Что бы начать заново, обновите страницу
+        div#playerDead.player-dead
+            h1.endPlayerModal ПОТРАЧЕНО!
+            p.endPlayerModal
+                br
+                | Что бы начать заново, обновите страницу
+
+        div.container
+            div.row
+                div.col-xs-3
+                    p Бонусы:
+                    | Яблочко: Health +5
+                    br
+                    | Арбузик: Speed +3
+                    br
+                    | Грушка: Speed +6, Health +7
+                    br
+                    | Вишенка: Speed +3, Damage +7
+                div.col-xs-6
+                    canvas#canvas.canvas(style="position: relative")
+                div.col-xs-3
+            div.row(style="margin-bottom: 5px;")
+                div.col-xs-1
+                    div Health:
+                div.col-xs-11
+                    div#health.progress-bar.progress-bar-warning(role="progressbar" aria-valuenow="40" aria-valuemin="0" aria-valuemax="100" style="width: 60%;") 60
+            div.row(style="margin-bottom: 5px;")
+                div.col-xs-1
+                    div Damage:
+                div.col-xs-11
+                    div#damage.progress-bar.progress-bar-danger(role="progressbar" aria-valuenow="40" aria-valuemin="0" aria-valuemax="100" style="width: 60%;") 60
+            div.row(style="margin-bottom: 5px;")
+                div.col-xs-1
+                    div Speed:
+                div.col-xs-11
+                    div#speed.progress-bar.progress-bar-info(role="progressbar" aria-valuenow="40" aria-valuemin="0" aria-valuemax="100" style="width: 60%;") 60
+
+        script(src="dist/js/libs/lodash.js")
+        script(src="dist/js/libs/stats.js")
         script(src="dist/js/main.js")
